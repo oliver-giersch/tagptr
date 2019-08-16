@@ -1,37 +1,93 @@
-#![feature(const_generics)]
+#![allow(clippy::should_implement_trait)]
+
+#![cfg_attr(feature = "nightly", const_generics)]
 
 #![no_std]
 
-mod pointer;
+#[cfg(feature = "nightly")]
+pub mod nightly;
 
-use core::marker::PhantomData;
+#[cfg(pointer_width = "64")]
+mod arch64;
+
+mod atomic;
+mod option;
+mod raw;
+
 use core::mem;
-use core::sync::atomic::AtomicUsize;
+use core::marker::PhantomData;
 use core::ptr::NonNull;
+use core::sync::atomic::AtomicUsize;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // AtomicMarkedPtr
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pub struct AtomicMarkedPtr<T, const N: usize> {
+pub struct AtomicMarkedPtr<T, N> {
     ptr: AtomicUsize,
-    _marker: PhantomData<*mut T>,
+    _marker: PhantomData<(*mut T, N)>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // MarkedPtr
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pub struct MarkedPtr<T, const N: usize> {
+pub struct MarkedPtr<T, N> {
     ptr: *mut T,
+    _marker: PhantomData<N>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // MarkedNonNull
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pub struct MarkedNonNull<T, const N: usize> {
+pub struct MarkedNonNull<T, N> {
     ptr: NonNull<T>,
+    _marker: PhantomData<N>,
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// MarkedOption
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Clone, Copy)]
+pub enum MarkedOption<T: NonNullable> {
+    Value(T),
+    Null(usize),
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// NonNullable (trait)
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// TODO: Docs...
+pub trait NonNullable: Sized {
+    /// TODO: Docs...
+    type Item: ?Sized;
+}
+
+/********** impl for NonNull<T> *******************************************************************/
+
+impl<T: ?Sized> NonNullable for NonNull<T> {
+    type Item = T;
+}
+
+/********** impl for &'a T ************************************************************************/
+
+impl<'a, T: ?Sized> NonNullable for &'a T {
+    type Item = T;
+}
+
+/********** impl for &'a mut T ********************************************************************/
+
+impl<'a, T: ?Sized> NonNullable for &'a mut T {
+    type Item = T;
+}
+
+/********** impl for MarkedNonNull ****************************************************************/
+
+impl<T, N> NonNullable for MarkedNonNull<T, N> {
+    type Item = T;
 }
 
 /********** helper functions **********************************************************************/
@@ -64,7 +120,7 @@ const fn mark_mask<T>(mark_bits: usize) -> usize {
 }
 
 #[inline]
-fn compose<T, const N: usize>(ptr: *mut T, tag: usize) -> *mut T {
-    debug_assert_eq!(ptr as usize & mark_mask::<T>(N), 0);
-    ((ptr as usize) | (mark_mask::<T>(N) & tag)) as *mut _
+fn compose<T>(mark_bits: usize, ptr: *mut T, tag: usize) -> *mut T {
+    debug_assert_eq!(ptr as usize & mark_mask::<T>(mark_bits), 0);
+    ((ptr as usize) | (mark_mask::<T>(mark_bits) & tag)) as *mut _
 }
