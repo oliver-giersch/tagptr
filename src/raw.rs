@@ -113,9 +113,12 @@ impl<T, N> MarkedPtr<T, N> {
 /********** impl inherent *************************************************************************/
 
 impl<T, N: Unsigned> MarkedPtr<T, N> {
-    const MARK_BITS: usize = N::USIZE;
-    const MARK_MASK: usize = crate::mark_mask::<T>(Self::MARK_BITS);
-    const POINTER_MASK: usize = !Self::MARK_MASK;
+    /// The number of available mark bits for this type.
+    pub const MARK_BITS: usize = N::USIZE;
+    /// The bitmask for the lower markable bits.
+    pub const MARK_MASK: usize = crate::mark_mask::<T>(Self::MARK_BITS);
+    /// The bitmask for the (higher) pointer bits.
+    pub const POINTER_MASK: usize = !Self::MARK_MASK;
 
     /// Composes a new [`MarkedPtr`] from a raw `ptr` and a `tag` value.
     ///
