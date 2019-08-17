@@ -1,30 +1,39 @@
 #![allow(clippy::should_implement_trait)]
-
-#![cfg_attr(feature = "nightly", const_generics)]
-
+#![warn(missing_docs)]
 #![no_std]
 
-#[cfg(feature = "nightly")]
-pub mod nightly;
-
-#[cfg(pointer_width = "64")]
+#[cfg(any(
+    target_arch = "x86_64",
+    target_arch = "powerpc64",
+    target_arch = "aarch64"
+))]
 mod arch64;
 
 mod atomic;
 mod option;
 mod raw;
 
-use core::mem;
 use core::marker::PhantomData;
+use core::mem;
 use core::ptr::NonNull;
 use core::sync::atomic::AtomicUsize;
+
+pub use typenum;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // AtomicMarkedPtr
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/// A raw pointer type which can be safely shared between threads and which
+/// can store additional information in its lower (unused) bits.
+///
+/// This type has the same in-memory representation as a `*mut T. It is mostly
+/// identical to [`AtomicPtr`][atomic], except that all of its methods involve
+/// a [`MarkedPtr`] instead of `*mut T`.
+///
+/// [atomic]: core::sync::atomic::AtomicPtr
 pub struct AtomicMarkedPtr<T, N> {
-    ptr: AtomicUsize,
+    inner: AtomicUsize,
     _marker: PhantomData<(*mut T, N)>,
 }
 
@@ -32,8 +41,16 @@ pub struct AtomicMarkedPtr<T, N> {
 // MarkedPtr
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/// A raw, unsafe pointer type like `*mut T` in which up to `N` of the pointer's
+/// lower bits can be used to store additional information (the *tag*).
+///
+/// Note, that the upper bound for `N` is dictated by the alignment of `T`.
+/// A type with an alignment of `8` (e.g. a `usize` on 64-bit architectures) can
+/// have up to `3` mark bits.
+/// Attempts to use types with insufficient alignment will result in a compile-
+/// time error.
 pub struct MarkedPtr<T, N> {
-    ptr: *mut T,
+    inner: *mut T,
     _marker: PhantomData<N>,
 }
 
@@ -41,8 +58,12 @@ pub struct MarkedPtr<T, N> {
 // MarkedNonNull
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/// A non-nullable marked raw pointer type like [`NonNull`].
+///
+/// Note, that unlike [`MarkedPtr`] this also **excludes** marked
+/// null-pointers.
 pub struct MarkedNonNull<T, N> {
-    ptr: NonNull<T>,
+    inner: NonNull<T>,
     _marker: PhantomData<N>,
 }
 
@@ -50,7 +71,7 @@ pub struct MarkedNonNull<T, N> {
 // MarkedOption
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub enum MarkedOption<T: NonNullable> {
     Value(T),
     Null(usize),
@@ -94,7 +115,10 @@ impl<T, N> NonNullable for MarkedNonNull<T, N> {
 
 #[inline]
 const fn decompose<T>(marked: usize, mark_bits: usize) -> (*mut T, usize) {
-    (decompose_ptr::<T>(marked, mark_bits), decompose_tag::<T>(marked, mark_bits))
+    (
+        decompose_ptr::<T>(marked, mark_bits),
+        decompose_tag::<T>(marked, mark_bits),
+    )
 }
 
 #[inline]
