@@ -120,24 +120,6 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
     /// The bitmask for the (higher) pointer bits.
     pub const POINTER_MASK: usize = !Self::MARK_MASK;
 
-    /// Composes a new [`MarkedPtr`] from a raw `ptr` and a `tag` value.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use core::ptr;
-    ///
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, typenum::U2>;
-    ///
-    /// let raw = &1 as *const i32 as *mut i32;
-    /// let ptr = MarkedPtr::compose(raw, 0b11);
-    /// assert_eq!(ptr.decompose(), (raw, 0b11));
-    /// ```
-    #[inline]
-    pub fn compose(ptr: *mut T, tag: usize) -> Self {
-        Self::new(crate::compose(Self::MARK_BITS, ptr, tag))
-    }
-
     /// Clears the tag from `self` and returns the same but unmarked pointer.
     ///
     /// # Examples
@@ -172,6 +154,24 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
     #[inline]
     pub fn with_tag(self, tag: usize) -> Self {
         Self::compose(self.decompose_ptr(), tag)
+    }
+
+    /// Composes a new [`MarkedPtr`] from a raw `ptr` and a `tag` value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use core::ptr;
+    ///
+    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, typenum::U2>;
+    ///
+    /// let raw = &1 as *const i32 as *mut i32;
+    /// let ptr = MarkedPtr::compose(raw, 0b11);
+    /// assert_eq!(ptr.decompose(), (raw, 0b11));
+    /// ```
+    #[inline]
+    pub fn compose(ptr: *mut T, tag: usize) -> Self {
+        Self::new(crate::compose(Self::MARK_BITS, ptr, tag))
     }
 
     /// Decomposes the [`MarkedPtr`], returning the separated raw pointer and
@@ -282,14 +282,14 @@ impl<'a, T, N> From<&'a T> for MarkedPtr<T, N> {
 impl<'a, T, N> From<&'a mut T> for MarkedPtr<T, N> {
     #[inline]
     fn from(reference: &'a mut T) -> Self {
-        Self::from(reference)
+        Self::new(reference)
     }
 }
 
 impl<T, N> From<NonNull<T>> for MarkedPtr<T, N> {
     #[inline]
     fn from(non_null: NonNull<T>) -> Self {
-        Self::from(non_null.as_ptr())
+        Self::new(non_null.as_ptr())
     }
 }
 
@@ -507,21 +507,27 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
         }
     }
 
+    /// Decomposes the marked pointer, returning the separated raw [`NonNull`]
+    /// pointer and its tag.
     #[inline]
     pub fn decompose(self) -> (NonNull<T>, usize) {
         (self.decompose_non_null(), self.decompose_tag())
     }
 
+    /// Decomposes the marked pointer, returning only the separated raw pointer.
     #[inline]
     pub fn decompose_ptr(self) -> *mut T {
         crate::decompose_ptr(self.inner.as_ptr() as usize, Self::MARK_BITS)
     }
 
+    /// Decomposes the marked pointer, returning only the separated raw
+    /// [`NonNull`] pointer.
     #[inline]
     pub fn decompose_non_null(self) -> NonNull<T> {
         unsafe { NonNull::new_unchecked(self.decompose_ptr()) }
     }
 
+    /// Decomposes the marked pointer, returning only the separated tag.
     #[inline]
     pub fn decompose_tag(self) -> usize {
         crate::decompose_tag::<T>(self.inner.as_ptr() as usize, Self::MARK_BITS)
@@ -771,3 +777,48 @@ impl<T, N> Hash for MarkedNonNull<T, N> {
 /// Error type for fallible conversion from [`MarkedPtr`] to [`MarkedNonNull`].
 #[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub struct NullError(());
+
+#[cfg(test)]
+mod tests {
+    use core::ptr;
+
+    type MarkedPtr = crate::MarkedPtr<i32, typenum::U2>;
+
+    #[test]
+    fn from_usize() {
+        let reference = &1 as *const i32 as usize;
+        let ptr = MarkedPtr::from_usize(reference | 0b1);
+        assert_eq!(ptr.into_usize(), reference | 0b1);
+        assert_eq!(unsafe { ptr.decompose_ref() }, (Some(&1), 0b1))
+    }
+
+    #[test]
+    fn from() {
+        let mut val = 1;
+
+        let from_ref = MarkedPtr::from(&val);
+        let from_mut = MarkedPtr::from(&mut val);
+        let from_const_ptr = MarkedPtr::from(&val as *const _);
+        let from_mut_ptr = MarkedPtr::from(&mut val as *mut _);
+
+        assert_eq!(from_ref, from_mut);
+        assert_eq!(from_mut, from_const_ptr);
+        assert_eq!(from_const_ptr, from_mut_ptr);
+    }
+
+    #[test]
+    fn decompose_ref() {
+        let null = MarkedPtr::null();
+        assert_eq!(unsafe { null.decompose_ref() }, (None, 0));
+        let marked_null = MarkedPtr::compose(ptr::null_mut(), 0b11);
+        assert_eq!(unsafe { marked_null.decompose_ref() }, (None, 0b11));
+        let ptr = MarkedPtr::compose(&mut 1, 0b01);
+        assert_eq!(unsafe { ptr.decompose_ref() }, (Some(&1), 0b01));
+    }
+
+    #[test]
+    fn decompose_mut() {
+        let ptr = MarkedPtr::compose(&mut 1, 0b01);
+        assert_eq!(unsafe { ptr.decompose_mut() }, (Some(&mut 1), 0b01));
+    }
+}

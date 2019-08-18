@@ -1,5 +1,9 @@
+//! Strongly typed marked pointers for storing bit patterns alongside pointers
+//!
+
 #![allow(clippy::should_implement_trait)]
 #![warn(missing_docs)]
+#![cfg_attr(all(target_arch = "x86_64", feature = "nightly"), feature(stdsimd))]
 #![no_std]
 
 #[cfg(any(
@@ -7,7 +11,7 @@
     target_arch = "powerpc64",
     target_arch = "aarch64"
 ))]
-mod arch64;
+pub mod arch64;
 
 mod atomic;
 mod option;
@@ -71,6 +75,10 @@ pub struct MarkedNonNull<T, N> {
 // MarkedOption
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/// A value that represents the possible states of a nullable marked pointer.
+///
+/// This type is similar to [`Option<T>`][Option] but can also express `null`
+/// pointers with mark bits.
 #[derive(Clone, Copy, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub enum MarkedOption<T: NonNullable> {
     Value(T),
@@ -81,9 +89,9 @@ pub enum MarkedOption<T: NonNullable> {
 // NonNullable (trait)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/// TODO: Docs...
+/// A trait for non-nullable pointer and reference types.
 pub trait NonNullable: Sized {
-    /// TODO: Docs...
+    /// The referenced or pointed-to type.
     type Item: ?Sized;
 }
 
