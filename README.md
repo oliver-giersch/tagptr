@@ -3,14 +3,14 @@
 Strongly typed marked pointers for storing bit patterns alongside raw pointers
 for concurrent programming with atomic operations.
 
-[![Build Status](https://travis-ci.com/oliver-giersch/reclaim.svg?branch=master)](
-https://travis-ci.com/oliver-giersch/conquer-pointer)
+[![Build Status](https://travis-ci.org/oliver-giersch/reclaim.svg?branch=master)](
+https://travis-ci.org/oliver-giersch/conquer-pointer)
 [![Latest version](https://img.shields.io/crates/v/conquer-pointer.svg)](
 https://crates.io/crates/conquer-pointer)
 [![Documentation](https://docs.rs/conquer-pointer/badge.svg)](https://docs.rs/conquer-pointer)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](
 https://github.com/oliver-giersch/conquer-pointer)
-[![Rust 1.36+](https://img.shields.io/badge/rust-1.36+-lightgray.svg)](
+[![Rust 1.36+](https://img.shields.io/badge/rustc-1.36-lightgray.svg)](
 https://www.rust-lang.org)
 
 ## Usage
