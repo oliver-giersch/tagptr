@@ -6,7 +6,7 @@ use core::ptr;
 use core::sync::atomic::AtomicUsize;
 
 #[cfg(all(target_arch = "x86_64", feature = "nightly"))]
-pub use dwcas::{AtomicMarkedWidePtr, MarkedWidePtr};
+pub use dwcas::{AtomicTagPtr, TagPtr};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // AtomicMarkedNativePtr

@@ -52,9 +52,13 @@ impl<T, N> AtomicMarkedPtr<T, N> {
         MarkedPtr::from_usize(self.inner.into_inner())
     }
 
+    /// Returns a mutable reference to the underlying [`MarkedPtr`].
+    ///
+    /// This is safe because the mutable reference guarantees that no other
+    /// threads are concurrently accessing the atomic data.
     #[inline]
     pub fn get_mut(&mut self) -> &mut MarkedPtr<T, N> {
-        unsafe { mem::transmute(self.inner.get_mut()) }
+        unsafe { &mut *(self.inner.get_mut() as *mut usize as *mut _) }
     }
 
     /// Loads a value from the pointer.
@@ -193,6 +197,12 @@ impl<T, N> AtomicMarkedPtr<T, N> {
             .map_err(MarkedPtr::from_usize)
     }
 
+    /// # Note
+    ///
+    /// Since fetch-and-add increments the entire memory word and is infallible,
+    /// it may be impossible to guarantee that the tag value can not overflow
+    /// into the pointer, which would corrupt both values and lead to undefined
+    /// behaviour, when the pointer is de-referenced.
     #[inline]
     pub fn fetch_add(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
         MarkedPtr::from_usize(self.inner.fetch_add(value, order))
