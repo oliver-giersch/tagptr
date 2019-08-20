@@ -8,13 +8,30 @@ use core::sync::atomic::Ordering;
 // AtomicMarkedWidePtr
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/// An atomic 128-bit value that is composed of a pointer and a 64-bit tag.
+///
+/// This type uses the x86-64 specific `cmpxchg16b` instruction to allow safe
+/// concurrent mutation.
+/// The tag value is usually used to prevent the **ABA Problem** with CAS
+/// operations.
 pub struct AtomicTagPtr<T> {
     inner: UnsafeCell<TagPtr<T>>,
 }
 
+/********** impl Send + Sync **********************************************************************/
+
+unsafe impl<T> Send for AtomicTagPtr<T> {}
+unsafe impl<T> Sync for AtomicTagPtr<T> {}
+
 impl<T> AtomicTagPtr<T> {
     const NULL: TagPtr<T> = TagPtr::null();
 
+    #[inline]
+    pub const fn new(ptr: TagPtr<T>) -> Self {
+        Self { inner: UnsafeCell::new(ptr) }
+    }
+
+    #[inline]
     pub fn load(&self, order: Ordering) -> TagPtr<T> {
         self.compare_and_swap(Self::NULL, Self::NULL, order)
     }
@@ -68,24 +85,48 @@ impl<T> AtomicTagPtr<T> {
 
 pub struct TagPtr<T>(pub *mut T, pub u64);
 
+/*********** impl Clone ***************************************************************************/
+
 impl<T> Clone for TagPtr<T> {
     fn clone(&self) -> Self {
         unimplemented!()
     }
 }
 
+/*********** impl Copy ****************************************************************************/
+
 impl<T> Copy for TagPtr<T> {}
 
+/*********** impl inherent ************************************************************************/
+
 impl<T> TagPtr<T> {
+    #[inline]
     pub const fn null() -> Self {
         Self(ptr::null_mut(), 0)
     }
 
+    #[inline]
     pub const fn new(ptr: *mut T) -> Self {
         Self(ptr, 0)
     }
 
+    #[inline]
     pub const fn compose(ptr: *mut T, tag: u64) -> Self {
         Self(ptr, tag)
+    }
+
+    #[inline]
+    pub const fn decompose(self) -> (*mut T, u64) {
+        (self.ptr(), self.tag())
+    }
+
+    #[inline]
+    pub fn ptr(self) -> *mut T {
+        self.0
+    }
+
+    #[inline]
+    pub fn tag(self) -> u64 {
+        self.1
     }
 }
