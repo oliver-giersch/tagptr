@@ -297,57 +297,99 @@ impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
         debug_assert!(value <= Self::MARK_MASK, "`value` would overflow tag bits");
         let prev = MarkedPtr::from_usize(self.inner.fetch_add(value, order));
         debug_assert!(
-            prev.decompose_tag() + value <= Self::MARK_MASK,
+            Self::MARK_MASK - value >= prev.decompose_tag(),
             "overflow of tag bits detected"
         );
         prev
     }
 
+    /// Subtracts from the current tag value, returning the previous
+    /// [`MarkedPtr`].
+    ///
+    /// Fetch-and-sub operates on the entire [`AtomicMarkedPtr`] and has no
+    /// notion of any tag bits or a maximum number thereof.
+    /// Since the operation is also infallible, it may be impossible to
+    /// guarantee that subtracting from the tag value can not underflow into the
+    /// pointer bits, which would corrupt both values and lead to undefined
+    /// behaviour as soon as the pointer is de-referenced.
+    ///
+    /// `fetch_add` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation.
+    /// All ordering modes are possible.
+    /// Note that using [`Acquire`][acq] makes the store part of this operation
+    /// [`Relaxed`][rlx], and using [`Release`][rel] makes the load part
+    /// [`Relaxed`][rlx].
+    ///
+    /// [rlx]: Ordering::Relaxed
+    /// [acq]: Ordering::Acquire
+    /// [rel]: Ordering::Release
+    ///
+    /// # Panics
+    ///
+    /// This method panics **in debug mode** if either `value` is greater than
+    /// the greatest possible tag value or if it is detected (after the fact)
+    /// that an underflow has occurred.
+    /// Note, that this does not guarantee that no other thread can observe the
+    /// corrupted pointer value before the panic occurs.
     #[inline]
     pub fn fetch_sub(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
-        debug_assert!(value <= Self::MARK_MASK);
-        MarkedPtr::from_usize(self.inner.fetch_sub(value, order))
+        debug_assert!(value <= Self::MARK_MASK, "`value` would underflow tag bits");
+        let prev = MarkedPtr::from_usize(self.inner.fetch_sub(value, order));
+        debug_assert!(prev.decompose_tag() >= value, "underflow of tag bits detected");
+        prev
     }
 
     /// Bitwise `and` with the current tag value.
     ///
-    /// Performs a bitwise `and` operation on the current tag and the argument `value` and sets the
-    /// new value to the result.
+    /// Performs a bitwise `and` operation on the current tag and the argument
+    /// `value` and sets the new value to the result.
     ///
-    /// Returns the [`MarkedPtr`] with the previous tag, the pointer itself can not change.
-    /// It `value` is larger than the mask of markable bits of this type it is silently truncated.
+    /// Returns the previous [`MarkedPtr`].
     ///
-    /// `fetch_and` takes an [`Ordering`] argument, which describes the memory ordering of this
-    /// operation.
+    /// `fetch_and` takes an [`Ordering`] argument, which describes the memory
+    /// ordering of this operation.
     /// All orderings modes are possible.
-    /// Note, that using [`Acquire`][acq] makes the store part of this operation [`Relaxed`][rlx]
-    /// and using [`Release`][rel] makes the load part [`Relaxed][rlx]
+    /// Note, that using [`Acquire`][acq] makes the store part of this operation
+    /// [`Relaxed`][rlx] and using [`Release`][rel] makes the load part
+    /// [`Relaxed][rlx].
     ///
     /// [acq]: Ordering::Acquire
     /// [rel]: Ordering::Release
     /// [rlx]: Ordering::Relaxed
+    ///
+    /// # Panics
+    ///
+    /// This method panics **in debug mode** if `value` has bits set which might
+    /// alter any pointer bits of the [`AtomicMarkedPtr`].
     #[inline]
     pub fn fetch_and(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
+        debug_assert!(value <= Self::MARK_MASK, "`fetch_and` could alter pointer bits");
         MarkedPtr::from_usize(self.inner.fetch_and(value, order))
     }
 
     /// Bitwise `nand` with the current tag value.
     ///
-    /// Performs a bitwise `nand` operation on the current tag and the argument `value` and sets the
-    /// new value to the result.
+    /// Performs a bitwise `nand` operation on the current tag and the argument
+    /// `value` and sets the new value to the result.
     ///
     /// Returns the [`MarkedPtr`] with the previous tag, the pointer itself can not change.
     /// It `value` is larger than the mask of markable bits of this type it is silently truncated.
     ///
-    /// `fetch_nand` takes an [`Ordering`] argument, which describes the memory ordering of this
-    /// operation.
+    /// `fetch_nand` takes an [`Ordering`] argument, which describes the memory
+    /// ordering of this operation.
     /// All orderings modes are possible.
-    /// Note, that using [`Acquire`][acq] makes the store part of this operation [`Relaxed`][rlx]
-    /// and using [`Release`][rel] makes the load part [`Relaxed][rlx]
+    /// Note, that using [`Acquire`][acq] makes the store part of this operation
+    /// [`Relaxed`][rlx] and using [`Release`][rel] makes the load part
+    /// [`Relaxed][rlx].
     ///
-    /// [acq]: core::sync::atomic::Ordering::Acquire
-    /// [rel]: core::sync::atomic::Ordering::Release
-    /// [rlx]: core::sync::atomic::Ordering::Relaxed
+    /// [acq]: Ordering::Acquire
+    /// [rel]: Ordering::Release
+    /// [rlx]: Ordering::Relaxed
+    ///
+    /// # Panics
+    ///
+    /// This method panics **in debug mode** if `value` has bits set which might
+    /// alter any pointer bits of the [`AtomicMarkedPtr`].
     #[inline]
     pub fn fetch_nand(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
         MarkedPtr::from_usize(self.inner.fetch_nand(value, order))
@@ -355,21 +397,27 @@ impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
 
     /// Bitwise `or` with the current tag value.
     ///
-    /// Performs a bitwise `or` operation on the current tag and the argument `value` and sets the
-    /// new value to the result.
+    /// Performs a bitwise `or` operation on the current tag and the argument
+    /// `value` and sets the new value to the result.
     ///
     /// Returns the [`MarkedPtr`] with the previous tag, the pointer itself can not change.
     /// It `value` is larger than the mask of markable bits of this type it is silently truncated.
     ///
-    /// `fetch_or` takes an [`Ordering`] argument, which describes the memory ordering of this
-    /// operation.
+    /// `fetch_or` takes an [`Ordering`] argument, which describes the memory
+    /// ordering of this operation.
     /// All orderings modes are possible.
-    /// Note, that using [`Acquire`][acq] makes the store part of this operation [`Relaxed`][rlx]
-    /// and using [`Release`][rel] makes the load part [`Relaxed][rlx]
+    /// Note, that using [`Acquire`][acq] makes the store part of this operation
+    /// [`Relaxed`][rlx] and using [`Release`][rel] makes the load part
+    /// [`Relaxed][rlx].
     ///
-    /// [acq]: core::sync::atomic::Ordering::Acquire
-    /// [rel]: core::sync::atomic::Ordering::Release
-    /// [rlx]: core::sync::atomic::Ordering::Relaxed
+    /// [acq]: Ordering::Acquire
+    /// [rel]: Ordering::Release
+    /// [rlx]: Ordering::Relaxed
+    ///
+    /// # Panics
+    ///
+    /// This method panics **in debug mode** if `value` has bits set which might
+    /// alter any pointer bits of the [`AtomicMarkedPtr`].
     #[inline]
     pub fn fetch_or(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
         MarkedPtr::from_usize(self.inner.fetch_or(value, order))
@@ -383,15 +431,21 @@ impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
     /// Returns the [`MarkedPtr`] with the previous tag, the pointer itself can not change.
     /// It `value` is larger than the mask of markable bits of this type it is silently truncated.
     ///
-    /// `fetch_xor` takes an [`Ordering`] argument, which describes the memory ordering of this
-    /// operation.
+    /// `fetch_xor` takes an [`Ordering`] argument, which describes the memory
+    /// ordering of this operation.
     /// All orderings modes are possible.
-    /// Note, that using [`Acquire`][acq] makes the store part of this operation [`Relaxed`][rlx]
-    /// and using [`Release`][rel] makes the load part [`Relaxed][rlx]
+    /// Note, that using [`Acquire`][acq] makes the store part of this operation
+    /// [`Relaxed`][rlx] and using [`Release`][rel] makes the load part
+    /// [`Relaxed][rlx].
     ///
-    /// [acq]: core::sync::atomic::Ordering::Acquire
-    /// [rel]: core::sync::atomic::Ordering::Release
-    /// [rlx]: core::sync::atomic::Ordering::Relaxed
+    /// [acq]: Ordering::Acquire
+    /// [rel]: Ordering::Release
+    /// [rlx]: Ordering::Relaxed
+    ///
+    /// # Panics
+    ///
+    /// This method panics **in debug mode** if `value` has bits set which might
+    /// alter any pointer bits of the [`AtomicMarkedPtr`].
     #[inline]
     pub fn fetch_xor(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
         MarkedPtr::from_usize(self.inner.fetch_xor(value, order))
