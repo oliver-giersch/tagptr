@@ -1,6 +1,5 @@
 use core::fmt;
 use core::marker::PhantomData;
-use core::mem;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 use typenum::Unsigned;
@@ -31,19 +30,13 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     /// Creates a new and unmarked `null` pointer.
     #[inline]
     pub const fn null() -> Self {
-        Self {
-            inner: AtomicUsize::new(0),
-            _marker: PhantomData,
-        }
+        Self { inner: AtomicUsize::new(0), _marker: PhantomData }
     }
 
     /// Creates a new [`AtomicMarkedPtr`].
     #[inline]
     pub fn new(marked_ptr: MarkedPtr<T, N>) -> Self {
-        Self {
-            inner: AtomicUsize::new(marked_ptr.into_usize()),
-            _marker: PhantomData,
-        }
+        Self { inner: AtomicUsize::new(marked_ptr.into_usize()), _marker: PhantomData }
     }
 
     /// Consumes `self` and returns the inner [`MarkedPtr`].
@@ -61,7 +54,7 @@ impl<T, N> AtomicMarkedPtr<T, N> {
         unsafe { &mut *(self.inner.get_mut() as *mut usize as *mut _) }
     }
 
-    /// Loads a value from the pointer.
+    /// Loads the value of the [`AtomicMarkedPtr`].
     ///
     /// `load` takes an [`Ordering`] argument which describes the memory
     /// ordering of this operation. Possible values are [`SeqCst`][seq_cst],
@@ -71,11 +64,11 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     ///
     /// Panics if `order` is [`Release`][rel] or [`AcqRel`][acq_rel].
     ///
-    /// [rlx]: core::sync::atomic::Ordering::Relaxed
-    /// [acq]: core::sync::atomic::Ordering::Acquire
-    /// [rel]: core::sync::atomic::Ordering::Release
-    /// [acq_rel]: core::sync::atomic::Ordering::AcqRel
-    /// [seq_cst]: core::sync::atomic::Ordering::SeqCst
+    /// [rlx]: Ordering::Relaxed
+    /// [acq]: Ordering::Acquire
+    /// [rel]: Ordering::Release
+    /// [acq_rel]: Ordering::AcqRel
+    /// [seq_cst]: Ordering::SeqCst
     ///
     /// # Examples
     ///
@@ -95,7 +88,7 @@ impl<T, N> AtomicMarkedPtr<T, N> {
         MarkedPtr::from_usize(self.inner.load(order))
     }
 
-    /// Stores a value into the pointer.
+    /// Stores a value into the [`AtomicMarkedPtr`].
     ///
     /// `store` takes an [`Ordering`] argument which describes the
     /// memory ordering of this operation. Possible values are
@@ -105,11 +98,11 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     ///
     /// Panics if `order` is [`Acquire`][acq] or [`AcqRel`][acq_rel].
     ///
-    /// [rlx]: core::sync::atomic::Ordering::Relaxed
-    /// [acq]: core::sync::atomic::Ordering::Acquire
-    /// [rel]: core::sync::atomic::Ordering::Release
-    /// [acq_rel]: core::sync::atomic::Ordering::AcqRel
-    /// [seq_cst]: core::sync::atomic::Ordering::SeqCst
+    /// [rlx]: Ordering::Relaxed
+    /// [acq]: Ordering::Acquire
+    /// [rel]: Ordering::Release
+    /// [acq_rel]: Ordering::AcqRel
+    /// [seq_cst]: Ordering::SeqCst
     ///
     /// # Examples
     ///
@@ -139,9 +132,9 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     /// [`Relaxed`][rlx], and using [`Release`][rel] makes the load part
     /// [`Relaxed`][rlx].
     ///
-    /// [rlx]: core::sync::atomic::Ordering::Relaxed
-    /// [acq]: core::sync::atomic::Ordering::Acquire
-    /// [rel]: core::sync::atomic::Ordering::Release
+    /// [rlx]: Ordering::Relaxed
+    /// [acq]: Ordering::Acquire
+    /// [rel]: Ordering::Release
     ///
     /// # Examples
     ///
@@ -155,6 +148,25 @@ impl<T, N> AtomicMarkedPtr<T, N> {
         MarkedPtr::from_usize(self.inner.swap(ptr.into_usize(), order))
     }
 
+    /// Stores a value into the pointer if the current value is the same
+    /// as `current`.
+    ///
+    /// The return value is always the previous value.
+    /// If it is equal to `current`, then the value was updated.
+    ///
+    /// `compare_and_swap` also takes an [`Ordering`] argument which describes
+    /// the memory ordering of this operation.
+    /// Notice that even when using [`AcqRel`][acq_res], the operation might
+    /// fail and hence just perform an `Acquire` load, but not have `Release`
+    /// semantics.
+    /// Using [`Acquire`][acq] makes the store part of this operation
+    /// [`Relaxed`] if it happens, and using [`Release`][rel] makes the load
+    /// part [`Relaxed`][rlx].
+    ///
+    /// [rlx]: Ordering::Relaxed
+    /// [acq]: Ordering::Acquire
+    /// [rel]: Ordering::Release
+    /// [acq_rel]: Ordering::AcqRel
     #[inline]
     pub fn compare_and_swap(
         &self,
@@ -169,6 +181,29 @@ impl<T, N> AtomicMarkedPtr<T, N> {
         ))
     }
 
+    /// Stores a value into the pointer if the current value is the same
+    /// as `current`.
+    ///
+    /// The return value is a result indicating whether the new value was
+    /// written and containing the previous value.
+    /// On success this value is guaranteed to be equal to `current`.
+    ///
+    /// `compare_exchange` takes two [`Ordering`] arguments to describe the
+    /// memory ordering of this operation.
+    /// The first describes the required ordering if the operation succeeds
+    /// while the second describes the required ordering when the operation
+    /// fails.
+    /// Using [`Acquire`][acq] as success ordering makes the store part of this
+    /// operation [`Relaxed`][rlx], and using [`Release`][rel] makes the
+    /// successful load [`Relaxed`][rlx].
+    /// The failure ordering can only be [`SeqCst`][seq_cst], [`Acquire`][acq]
+    /// or [`Relaxed`][rlx] and must be equivalent to or weaker than the success
+    /// ordering.
+    ///
+    /// [rlx]: Ordering::Relaxed
+    /// [acq]: Ordering::Acquire
+    /// [rel]: Ordering::Release
+    /// [seq_cst]: Ordering::SeqCst
     #[inline]
     pub fn compare_exchange(
         &self,
@@ -183,6 +218,30 @@ impl<T, N> AtomicMarkedPtr<T, N> {
             .map_err(MarkedPtr::from_usize)
     }
 
+    /// Stores a value into the pointer if the current value is the same
+    /// as `current`.
+    ///
+    /// Unlike [`compare_exchange`], this function is allowed to spuriously fail
+    /// even when the comparison succeeds, which can result in more efficient
+    /// code on some platforms.
+    /// The return value is a result indicating whether the new value was
+    /// written and containing the previous value.
+    ///
+    /// `compare_exchange_weak` takes two [`Ordering`] arguments to describe the
+    /// memory ordering of this operation.
+    /// The first describes the required ordering if the operation succeeds
+    /// while the second describes the required ordering when the operation
+    /// fails.
+    /// Using [`Acquire`][acq] as success ordering makes the store part of this
+    /// operation [`Relaxed`][rlx], and using [`Release`][rel] makes the
+    /// successful load [`Relaxed`][rlx].
+    /// The failure ordering can only be [`SeqCst`][seq_cst], [`Acquire`][acq]
+    /// or [`Relaxed`][rlx] and must be equivalent to or weaker than the success
+    /// ordering.
+    ///
+    /// [rlx]: Ordering::Relaxed
+    /// [acq]: Ordering::Acquire
+    /// [rel]: Ordering::Release
     #[inline]
     pub fn compare_exchange_weak(
         &self,
@@ -197,12 +256,25 @@ impl<T, N> AtomicMarkedPtr<T, N> {
             .map_err(MarkedPtr::from_usize)
     }
 
-    /// # Note
+    /// Adds to the current tag value, returning the previous [`MarkedPtr`].
     ///
-    /// Since fetch-and-add increments the entire memory word and is infallible,
-    /// it may be impossible to guarantee that the tag value can not overflow
-    /// into the pointer, which would corrupt both values and lead to undefined
-    /// behaviour, when the pointer is de-referenced.
+    /// Fetch-and-add operates on the entire [`AtomicMarkedPtr`] and has no
+    /// notion of any tag bits or a maximum number thereof.
+    /// Since the operation is also infallible, it may be impossible to
+    /// guarantee that incrementing the tag value can not overflow into the
+    /// pointer bits, which would corrupt both values and lead to undefined
+    /// behaviour as soon as the pointer is de-referenced.
+    ///
+    /// `fetch_add` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation.
+    /// All ordering modes are possible.
+    /// Note that using [`Acquire`][acq] makes the store part of this operation
+    /// [`Relaxed`][rlx], and using [`Release`][rel] makes the load part
+    /// [`Relaxed`][rlx].
+    ///
+    /// [rlx]: Ordering::Relaxed
+    /// [acq]: Ordering::Acquire
+    /// [rel]: Ordering::Release
     #[inline]
     pub fn fetch_add(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
         MarkedPtr::from_usize(self.inner.fetch_add(value, order))
@@ -227,9 +299,9 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     /// Note, that using [`Acquire`][acq] makes the store part of this operation [`Relaxed`][rlx]
     /// and using [`Release`][rel] makes the load part [`Relaxed][rlx]
     ///
-    /// [acq]: core::sync::atomic::Ordering::Acquire
-    /// [rel]: core::sync::atomic::Ordering::Release
-    /// [rlx]: core::sync::atomic::Ordering::Relaxed
+    /// [acq]: Ordering::Acquire
+    /// [rel]: Ordering::Release
+    /// [rlx]: Ordering::Relaxed
     #[inline]
     pub fn fetch_and(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
         MarkedPtr::from_usize(self.inner.fetch_and(value, order))
@@ -317,10 +389,7 @@ impl<T, N: Unsigned> fmt::Debug for AtomicMarkedPtr<T, N> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (ptr, tag) = self.load(Ordering::SeqCst).decompose();
-        f.debug_struct("AtomicMarkedPtr")
-            .field("ptr", &ptr)
-            .field("tag", &tag)
-            .finish()
+        f.debug_struct("AtomicMarkedPtr").field("ptr", &ptr).field("tag", &tag).finish()
     }
 }
 
@@ -329,9 +398,6 @@ impl<T, N: Unsigned> fmt::Debug for AtomicMarkedPtr<T, N> {
 impl<T, N> From<MarkedPtr<T, N>> for AtomicMarkedPtr<T, N> {
     #[inline]
     fn from(marked_ptr: MarkedPtr<T, N>) -> Self {
-        Self {
-            inner: AtomicUsize::new(marked_ptr.into_usize()),
-            _marker: PhantomData,
-        }
+        Self { inner: AtomicUsize::new(marked_ptr.into_usize()), _marker: PhantomData }
     }
 }
