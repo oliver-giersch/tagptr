@@ -288,15 +288,18 @@ impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
     /// # Panics
     ///
     /// This method panics **in debug mode** if either `value` is greater than
-    /// the greatest possible tag value or if, after the fact, it is detected
-    /// that an overflow is detected.
+    /// the greatest possible tag value or if it is detected (after the fact)
+    /// that an overflow has occurred.
     /// Note, that this does not guarantee that no other thread can observe the
     /// corrupted pointer value before the panic occurs.
     #[inline]
     pub fn fetch_add(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
-        debug_assert!(value <= Self::MARK_MASK);
+        debug_assert!(value <= Self::MARK_MASK, "`value` would overflow tag bits");
         let prev = MarkedPtr::from_usize(self.inner.fetch_add(value, order));
-        debug_assert!(prev.decompose_tag() + value <= Self::MARK_MASK);
+        debug_assert!(
+            prev.decompose_tag() + value <= Self::MARK_MASK,
+            "overflow of tag bits detected"
+        );
         prev
     }
 
