@@ -156,12 +156,12 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     ///
     /// `compare_and_swap` also takes an [`Ordering`] argument which describes
     /// the memory ordering of this operation.
-    /// Notice that even when using [`AcqRel`][acq_res], the operation might
+    /// Notice that even when using [`AcqRel`][acq_rel], the operation might
     /// fail and hence just perform an `Acquire` load, but not have `Release`
     /// semantics.
     /// Using [`Acquire`][acq] makes the store part of this operation
-    /// [`Relaxed`] if it happens, and using [`Release`][rel] makes the load
-    /// part [`Relaxed`][rlx].
+    /// [`Relaxed`][rlx] if it happens, and using [`Release`][rel] makes the
+    /// load part [`Relaxed`][rlx].
     ///
     /// [rlx]: Ordering::Relaxed
     /// [acq]: Ordering::Acquire
@@ -221,9 +221,9 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     /// Stores a value into the pointer if the current value is the same
     /// as `current`.
     ///
-    /// Unlike [`compare_exchange`], this function is allowed to spuriously fail
-    /// even when the comparison succeeds, which can result in more efficient
-    /// code on some platforms.
+    /// Unlike [`compare_exchange`][AtomicMarkedPtr::compare_exchange], this
+    /// function is allowed to spuriously fail even when the comparison
+    /// succeeds, which can result in more efficient code on some platforms.
     /// The return value is a result indicating whether the new value was
     /// written and containing the previous value.
     ///
@@ -242,6 +242,7 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     /// [rlx]: Ordering::Relaxed
     /// [acq]: Ordering::Acquire
     /// [rel]: Ordering::Release
+    /// [seq_cst]: Ordering::SeqCst
     #[inline]
     pub fn compare_exchange_weak(
         &self,

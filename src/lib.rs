@@ -6,11 +6,7 @@
 #![cfg_attr(all(target_arch = "x86_64", feature = "nightly"), feature(stdsimd))]
 #![no_std]
 
-#[cfg(any(
-    target_arch = "x86_64",
-    target_arch = "powerpc64",
-    target_arch = "aarch64"
-))]
+#[cfg(any(target_arch = "x86_64", target_arch = "powerpc64", target_arch = "aarch64"))]
 pub mod arch64;
 
 mod atomic;
@@ -31,7 +27,7 @@ pub use typenum;
 /// A raw pointer type which can be safely shared between threads and which
 /// can store additional information in its lower (unused) bits.
 ///
-/// This type has the same in-memory representation as a `*mut T. It is mostly
+/// This type has the same in-memory representation as a `*mut T`. It is mostly
 /// identical to [`AtomicPtr`][atomic], except that all of its methods involve
 /// a [`MarkedPtr`] instead of `*mut T`.
 ///
@@ -81,7 +77,9 @@ pub struct MarkedNonNull<T, N> {
 /// pointers with mark bits.
 #[derive(Clone, Copy, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub enum MarkedOption<T: NonNullable> {
+    /// Some reference or non-nullable pointer type
     Value(T),
+    /// Null pointer, potentially marked
     Null(usize),
 }
 
@@ -123,10 +121,7 @@ impl<T, N> NonNullable for MarkedNonNull<T, N> {
 
 #[inline]
 const fn decompose<T>(marked: usize, mark_bits: usize) -> (*mut T, usize) {
-    (
-        decompose_ptr::<T>(marked, mark_bits),
-        decompose_tag::<T>(marked, mark_bits),
-    )
+    (decompose_ptr::<T>(marked, mark_bits), decompose_tag::<T>(marked, mark_bits))
 }
 
 #[inline]

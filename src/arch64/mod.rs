@@ -1,3 +1,9 @@
+//! Native marked pointers without alignment requirements exploiting the
+//! property of current 64-bit architectures, which only use 48-bit virtual
+//! addresses.
+//! This leaves the upper 16-bit of any 64-bit pointer available for storing
+//! additional tag bits.
+
 #[cfg(all(target_arch = "x86_64", feature = "nightly"))]
 mod dwcas;
 
@@ -12,6 +18,15 @@ pub use dwcas::{AtomicTagPtr, TagPtr};
 // AtomicMarkedNativePtr
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/// An atomic native 64-bit marked pointer with 16 available bits for storing a
+/// tag value.
+///
+/// This type's API is almost identical to the more general
+/// [`AtomicMarkedPtr`][crate::AtomicMarkedPtr].
+/// It's advantage is its ability to store 16 bit tags regardless of the
+/// alignment of type `T`.
+/// However, it is also only available on 64-bit architectures that use 48-bit
+/// virtual addresses.
 pub struct AtomicMarkedNativePtr<T> {
     inner: AtomicUsize,
     _marker: PhantomData<*mut T>,
@@ -34,11 +49,39 @@ impl<T> Default for AtomicMarkedNativePtr<T> {
 /********** impl inherent *************************************************************************/
 
 impl<T> AtomicMarkedNativePtr<T> {
+    /// The number of available mark bits for this type.
+    pub const MARK_BITS: usize = 16;
+    /// The bitmask for the lower markable bits.
+    pub const MARK_MASK: usize = 0xFFFF << Self::MARK_SHIFT;
+    /// The bitmask for the (higher) pointer bits.
+    pub const POINTER_MASK: usize = !Self::MARK_MASK;
+
+    const MARK_SHIFT: usize = 48;
+
+    /// Creates a new and unmarked `null` pointer.
     pub const fn null() -> Self {
-        Self {
-            inner: AtomicUsize::new(0),
-            _marker: PhantomData,
-        }
+        Self { inner: AtomicUsize::new(0), _marker: PhantomData }
+    }
+
+    /// Creates a new [`AtomicMarkedNativePtr`].
+    #[inline]
+    pub fn new(marked_ptr: MarkedNativePtr<T>) -> Self {
+        Self { inner: AtomicUsize::new(marked_ptr.into_usize()), _marker: PhantomData }
+    }
+
+    /// Consumes `self` and returns the inner [`MarkedNativePtr`].
+    #[inline]
+    pub fn into_inner(self) -> MarkedNativePtr<T> {
+        MarkedNativePtr::from_usize(self.inner.into_inner())
+    }
+
+    /// Returns a mutable reference to the underlying [`MarkedNativePtr`].
+    ///
+    /// This is safe because the mutable reference guarantees that no other
+    /// threads are concurrently accessing the atomic data.
+    #[inline]
+    pub fn get_mut(&mut self) -> &mut MarkedNativePtr<T> {
+        unsafe { &mut *(self.inner.get_mut() as *mut usize as *mut _) }
     }
 }
 
@@ -102,17 +145,13 @@ impl<T> MarkedNativePtr<T> {
     /// of a potentially marked pointer.
     #[inline]
     pub const fn from_usize(val: usize) -> Self {
-        Self {
-            inner: val as *mut _,
-        }
+        Self { inner: val as *mut _ }
     }
 
     /// Casts to a pointer of type `U`.
     #[inline]
     pub const fn cast<U>(self) -> MarkedNativePtr<U> {
-        MarkedNativePtr {
-            inner: self.inner.cast(),
-        }
+        MarkedNativePtr { inner: self.inner.cast() }
     }
 
     /// Returns the inner pointer *as is*, meaning any potential tag is not
@@ -212,10 +251,10 @@ impl<T> MarkedNativePtr<T> {
     ///
     /// # Safety
     ///
-    /// As with [`decompose_ref`][MarkedPtr::decompose_ref], this is unsafe
-    /// because it cannot verify the validity of the returned pointer, nor can
-    /// it ensure that the lifetime `'a` returned is indeed a valid lifetime for
-    /// the contained data.
+    /// As with [`decompose_ref`][crate::MarkedPtr::decompose_ref], this is
+    /// unsafe because it cannot verify the validity of the returned pointer,
+    /// nor can it ensure that the lifetime `'a` returned is indeed a valid
+    /// lifetime for the contained data.
     #[inline]
     pub unsafe fn decompose_mut<'a>(self) -> (Option<&'a mut T>, u16) {
         (self.as_mut(), self.decompose_tag())
@@ -226,8 +265,9 @@ impl<T> MarkedNativePtr<T> {
     ///
     /// # Safety
     ///
-    /// The same caveats as with [`decompose_ref`][MarkedPtr::decompose_ref]
-    /// apply for this method as well.
+    /// The same caveats as with
+    /// [`decompose_ref`][crate::MarkedPtr::decompose_ref] apply for this method
+    /// as well.
     #[inline]
     pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
         self.decompose_ptr().as_ref()
@@ -238,8 +278,9 @@ impl<T> MarkedNativePtr<T> {
     ///
     /// # Safety
     ///
-    /// The same caveats as with [`decompose_mut`][MarkedPtr::decompose_mut]
-    /// apply for this method as well.
+    /// The same caveats as with
+    /// [`decompose_mut`][crate::MarkedPtr::decompose_mut] apply for this method
+    /// as well.
     #[inline]
     pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
         self.decompose_ptr().as_mut()
