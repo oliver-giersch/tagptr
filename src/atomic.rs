@@ -255,6 +255,15 @@ impl<T, N> AtomicMarkedPtr<T, N> {
             .map(MarkedPtr::from_usize)
             .map_err(MarkedPtr::from_usize)
     }
+}
+
+impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
+    /// The number of available mark bits for this type.
+    pub const MARK_BITS: usize = N::USIZE;
+    /// The bitmask for the lower markable bits.
+    pub const MARK_MASK: usize = crate::mark_mask::<T>(Self::MARK_BITS);
+    /// The bitmask for the (higher) pointer bits.
+    pub const POINTER_MASK: usize = !Self::MARK_MASK;
 
     /// Adds to the current tag value, returning the previous [`MarkedPtr`].
     ///
@@ -275,13 +284,25 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     /// [rlx]: Ordering::Relaxed
     /// [acq]: Ordering::Acquire
     /// [rel]: Ordering::Release
+    ///
+    /// # Panics
+    ///
+    /// This method panics **in debug mode** if either `value` is greater than
+    /// the greatest possible tag value or if, after the fact, it is detected
+    /// that an overflow is detected.
+    /// Note, that this does not guarantee that no other thread can observe the
+    /// corrupted pointer value before the panic occurs.
     #[inline]
     pub fn fetch_add(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
-        MarkedPtr::from_usize(self.inner.fetch_add(value, order))
+        debug_assert!(value <= Self::MARK_MASK);
+        let prev = MarkedPtr::from_usize(self.inner.fetch_add(value, order));
+        debug_assert!(prev.decompose_tag() + value <= Self::MARK_MASK);
+        prev
     }
 
     #[inline]
     pub fn fetch_sub(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
+        debug_assert!(value <= Self::MARK_MASK);
         MarkedPtr::from_usize(self.inner.fetch_sub(value, order))
     }
 
@@ -372,15 +393,6 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     pub fn fetch_xor(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
         MarkedPtr::from_usize(self.inner.fetch_xor(value, order))
     }
-}
-
-impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
-    /// The number of available mark bits for this type.
-    pub const MARK_BITS: usize = N::USIZE;
-    /// The bitmask for the lower markable bits.
-    pub const MARK_MASK: usize = crate::mark_mask::<T>(Self::MARK_BITS);
-    /// The bitmask for the (higher) pointer bits.
-    pub const POINTER_MASK: usize = !Self::MARK_MASK;
 }
 
 /********** impl Debug ****************************************************************************/
