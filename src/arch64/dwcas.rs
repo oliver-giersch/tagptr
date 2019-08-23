@@ -10,7 +10,7 @@ use core::sync::atomic::Ordering;
 
 /// An atomic 128-bit value that is composed of a pointer and a 64-bit tag.
 ///
-/// This type uses the x86-64 specific `cmpxchg16b` instruction to allow safe
+/// This type uses the x86/64 specific `cmpxchg16b` instruction to allow safe
 /// concurrent mutation.
 /// The tag value is usually used to prevent the **ABA Problem** with CAS
 /// operations.

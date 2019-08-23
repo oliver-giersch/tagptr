@@ -115,6 +115,16 @@ impl<T: NonNullable> MarkedOption<T> {
         }
     }
 
+    /// Applies a function `func` to the contained pointer (if any) or returns
+    /// the provided `default` value.
+    #[inline]
+    pub fn map_or<U, F>(self, default: U, func: impl FnOnce(T) -> U) -> U {
+        match self {
+            Value(ptr) => func(ptr),
+            Null(_) => default,
+        }
+    }
+
     /// Applies a function to the contained value (if any), or computes a
     /// default value using `func`, if no value is contained.
     #[inline]
@@ -161,6 +171,26 @@ impl<T: NonNullable> From<Option<T>> for MarkedOption<T> {
         match opt {
             Some(ptr) => Value(ptr),
             None => Null(0),
+        }
+    }
+}
+
+impl<'a, T: NonNullable> From<&'a MarkedOption<T>> for MarkedOption<&'a T> {
+    #[inline]
+    fn from(reference: &'a MarkedOption<T>) -> Self {
+        match reference {
+            Value(val) => Value(val),
+            Null(tag) => Null(*tag),
+        }
+    }
+}
+
+impl<'a, T: NonNullable> From<&'a mut MarkedOption<T>> for MarkedOption<&'a mut T> {
+    #[inline]
+    fn from(reference: &'a mut MarkedOption<T>) -> Self {
+        match reference {
+            Value(val) => Value(val),
+            Null(tag) => Null(*tag),
         }
     }
 }
