@@ -1,6 +1,7 @@
 use core::arch::x86_64::cmpxchg16b;
 use core::cell::UnsafeCell;
 use core::cmp;
+use core::fmt;
 use core::mem;
 use core::ptr;
 use core::sync::atomic::Ordering;
@@ -93,7 +94,7 @@ impl<T> AtomicTagPtr<T> {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-// MarkedWidePtr
+// TagPtr
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// A double-world tuple consisting of a raw pointer and an associated 64-bit
@@ -152,21 +153,21 @@ impl<T> TagPtr<T> {
 
     #[inline]
     pub const fn decompose_ptr(self) -> *mut T {
-        self.0
+        self.ptr()
     }
 
     #[inline]
     pub const fn decompose_tag(self) -> u64 {
-        self.1
+        self.tag()
     }
 
     #[inline]
-    pub fn ptr(self) -> *mut T {
+    pub const fn ptr(self) -> *mut T {
         self.0
     }
 
     #[inline]
-    pub fn tag(self) -> u64 {
+    pub const fn tag(self) -> u64 {
         self.1
     }
 
@@ -178,6 +179,15 @@ impl<T> TagPtr<T> {
     #[inline]
     pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
         self.0.as_mut()
+    }
+}
+
+/*********** impl Debug ***************************************************************************/
+
+impl<T> fmt::Debug for TagPtr<T> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("TagPtr").field("ptr", &self.0).field("tag", &self.1).finish()
     }
 }
 
@@ -215,5 +225,19 @@ impl<T> Ord for TagPtr<T> {
             cmp::Ordering::Equal => self.1.cmp(&other.1),
             any => any,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use core::sync::atomic::Ordering;
+
+    use super::{AtomicTagPtr, TagPtr};
+
+    #[test]
+    fn atomic_load() {
+        let ptr = &mut 1;
+        let atomic = AtomicTagPtr::new(TagPtr(ptr, u64::max_value()));
+        assert_eq!(atomic.load(Ordering::SeqCst), TagPtr(ptr, u64::max_value()));
     }
 }
