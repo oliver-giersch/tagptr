@@ -1,5 +1,6 @@
 use core::arch::x86_64::cmpxchg16b;
 use core::cell::UnsafeCell;
+use core::cmp;
 use core::mem;
 use core::ptr;
 use core::sync::atomic::Ordering;
@@ -23,9 +24,21 @@ pub struct AtomicTagPtr<T> {
 unsafe impl<T> Send for AtomicTagPtr<T> {}
 unsafe impl<T> Sync for AtomicTagPtr<T> {}
 
+/********** impl Default **************************************************************************/
+
+impl<T> Default for AtomicTagPtr<T> {
+    #[inline]
+    fn default() -> Self {
+        Self::new(TagPtr::null())
+    }
+}
+
+/********** impl inherent *************************************************************************/
+
 impl<T> AtomicTagPtr<T> {
     const NULL: TagPtr<T> = TagPtr::null();
 
+    /// Creates a new [`AtomicTagPtr`].
     #[inline]
     pub const fn new(ptr: TagPtr<T>) -> Self {
         Self { inner: UnsafeCell::new(ptr) }
@@ -83,13 +96,15 @@ impl<T> AtomicTagPtr<T> {
 // MarkedWidePtr
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/// A double-world tuple consisting of a raw pointer and an associated 64-bit
+/// tag value.
 pub struct TagPtr<T>(pub *mut T, pub u64);
 
 /*********** impl Clone ***************************************************************************/
 
 impl<T> Clone for TagPtr<T> {
     fn clone(&self) -> Self {
-        unimplemented!()
+        Self(self.0, self.1)
     }
 }
 
@@ -97,12 +112,27 @@ impl<T> Clone for TagPtr<T> {
 
 impl<T> Copy for TagPtr<T> {}
 
+/*********** impl Default *************************************************************************/
+
+impl<T> Default for TagPtr<T> {
+    #[inline]
+    fn default() -> Self {
+        Self::null()
+    }
+}
+
 /*********** impl inherent ************************************************************************/
 
 impl<T> TagPtr<T> {
     #[inline]
     pub const fn null() -> Self {
         Self(ptr::null_mut(), 0)
+    }
+
+    /// Casts to a pointer of type `U`.
+    #[inline]
+    pub const fn cast<U>(self) -> TagPtr<U> {
+        TagPtr(self.0.cast(), self.1)
     }
 
     #[inline]
@@ -121,6 +151,16 @@ impl<T> TagPtr<T> {
     }
 
     #[inline]
+    pub const fn decompose_ptr(self) -> *mut T {
+        self.0
+    }
+
+    #[inline]
+    pub const fn decompose_tag(self) -> u64 {
+        self.1
+    }
+
+    #[inline]
     pub fn ptr(self) -> *mut T {
         self.0
     }
@@ -128,5 +168,52 @@ impl<T> TagPtr<T> {
     #[inline]
     pub fn tag(self) -> u64 {
         self.1
+    }
+
+    #[inline]
+    pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
+        self.0.as_ref()
+    }
+
+    #[inline]
+    pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
+        self.0.as_mut()
+    }
+}
+
+/*********** impl PartialEq ***********************************************************************/
+
+impl<T> PartialEq for TagPtr<T> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eq(&other.0) && self.1.eq(&other.1)
+    }
+}
+
+/*********** impl PartialOrd **********************************************************************/
+
+impl<T> PartialOrd for TagPtr<T> {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        match self.0.partial_cmp(&other.0) {
+            Some(cmp::Ordering::Equal) => self.1.partial_cmp(&self.1),
+            any => any,
+        }
+    }
+}
+
+/*********** impl Eq ******************************************************************************/
+
+impl<T> Eq for TagPtr<T> {}
+
+/*********** impl Ord *****************************************************************************/
+
+impl<T> Ord for TagPtr<T> {
+    #[inline]
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        match self.0.cmp(&other.0) {
+            cmp::Ordering::Equal => self.1.cmp(&other.1),
+            any => any,
+        }
     }
 }
