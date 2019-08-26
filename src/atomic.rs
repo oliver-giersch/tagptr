@@ -113,7 +113,6 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     /// type AtomicMarkedPtr<T> = conquer_pointer::AtomicMarkedPtr<T, reclaim::typenum::U0>;
     ///
     /// let atomic = AtomicMarkedPtr::null();
-    ///
     /// let store = MarkedPtr::new(&mut 10);
     ///
     /// atomic.store(store, Ordering::SeqCst);

@@ -9,7 +9,7 @@ mod dwcas;
 
 use core::marker::PhantomData;
 use core::ptr;
-use core::sync::atomic::AtomicUsize;
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 #[cfg(all(target_arch = "x86_64", feature = "nightly"))]
 pub use dwcas::{AtomicTagPtr, TagPtr};
@@ -26,7 +26,8 @@ pub use dwcas::{AtomicTagPtr, TagPtr};
 /// It's advantage is its ability to store 16 bit tags regardless of the
 /// alignment of type `T`.
 /// However, it is also only available on 64-bit architectures that use 48-bit
-/// virtual addresses.
+/// virtual addresses, which, as of 2019, is practically every 64-bit
+/// architecture, although this may change for future architectures.
 pub struct AtomicMarkedNativePtr<T> {
     inner: AtomicUsize,
     _marker: PhantomData<*mut T>,
@@ -82,6 +83,220 @@ impl<T> AtomicMarkedNativePtr<T> {
     #[inline]
     pub fn get_mut(&mut self) -> &mut MarkedNativePtr<T> {
         unsafe { &mut *(self.inner.get_mut() as *mut usize as *mut _) }
+    }
+
+    /// Loads the value of the [`AtomicMarkedNativePtr`].
+    ///
+    /// `load` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation. Possible values are [`SeqCst`][seq_cst],
+    /// [`Acquire`][acq] and [`Relaxed`][rlx].
+    ///
+    /// # Panics
+    ///
+    /// Panics if `order` is [`Release`][rel] or [`AcqRel`][acq_rel].
+    ///
+    /// [rlx]: Ordering::Relaxed
+    /// [acq]: Ordering::Acquire
+    /// [rel]: Ordering::Release
+    /// [acq_rel]: Ordering::AcqRel
+    /// [seq_cst]: Ordering::SeqCst
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::Ordering;
+    ///
+    /// use conquer_pointer::arch64::{AtomicMarkedNativePtr, MarkedNativePtr};
+    ///
+    /// let atomic = AtomicMarkedNativePtr::new(MarkedNativePtr::compose(&mut 5, 0b1));
+    ///
+    /// let load = atomic.load(Ordering::SeqCst);
+    /// assert_eq!((Some(&mut 5), 0b1), unsafe { load.decompose_mut() });
+    /// ```
+    #[inline]
+    pub fn load(&self, order: Ordering) -> MarkedNativePtr<T> {
+        MarkedNativePtr::from_usize(self.inner.load(order))
+    }
+
+    /// Stores a value into the [`AtomicMarkedNativePtr`].
+    ///
+    /// `store` takes an [`Ordering`] argument which describes the
+    /// memory ordering of this operation. Possible values are
+    /// [`SeqCst`][seq_cst], [`Release`][rel] and [`Relaxed`][rlx].
+    ///
+    /// # Panics
+    ///
+    /// Panics if `order` is [`Acquire`][acq] or [`AcqRel`][acq_rel].
+    ///
+    /// [rlx]: Ordering::Relaxed
+    /// [acq]: Ordering::Acquire
+    /// [rel]: Ordering::Release
+    /// [acq_rel]: Ordering::AcqRel
+    /// [seq_cst]: Ordering::SeqCst
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::Ordering;
+    ///
+    /// use conquer_pointer::arch64::{AtomicMarkedNativePtr, MarkedNativePtr};
+    ///
+    /// let atomic = AtomicMarkedNativePtr::null();
+    /// let store = MarkedNativePtr::new(&mut 10);
+    ///
+    /// atomic.store(store, Ordering::SeqCst);
+    /// ```
+    #[inline]
+    pub fn store(&self, ptr: MarkedNativePtr<T>, order: Ordering) {
+        self.inner.store(ptr.into_usize(), order);
+    }
+
+    /// Stores a value into the pointer if the current value is the same
+    /// as `current`.
+    ///
+    /// The return value is always the previous value.
+    /// If it is equal to `current`, then the value was updated.
+    ///
+    /// `compare_and_swap` also takes an [`Ordering`] argument which describes
+    /// the memory ordering of this operation.
+    /// Notice that even when using [`AcqRel`][acq_rel], the operation might
+    /// fail and hence just perform an `Acquire` load, but not have `Release`
+    /// semantics.
+    /// Using [`Acquire`][acq] makes the store part of this operation
+    /// [`Relaxed`][rlx] if it happens, and using [`Release`][rel] makes the
+    /// load part [`Relaxed`][rlx].
+    ///
+    /// [rlx]: Ordering::Relaxed
+    /// [acq]: Ordering::Acquire
+    /// [rel]: Ordering::Release
+    /// [acq_rel]: Ordering::AcqRel
+    #[inline]
+    pub fn compare_and_swap(
+        &self,
+        current: MarkedNativePtr<T>,
+        new: MarkedNativePtr<T>,
+        order: Ordering,
+    ) -> MarkedNativePtr<T> {
+        MarkedNativePtr::from_usize(self.inner.compare_and_swap(
+            current.into_usize(),
+            new.into_usize(),
+            order,
+        ))
+    }
+
+    /// Stores a value into the pointer if the current value is the same
+    /// as `current`.
+    ///
+    /// The return value is a result indicating whether the new value was
+    /// written and containing the previous value.
+    /// On success this value is guaranteed to be equal to `current`.
+    ///
+    /// `compare_exchange` takes two [`Ordering`] arguments to describe the
+    /// memory ordering of this operation.
+    /// The first describes the required ordering if the operation succeeds
+    /// while the second describes the required ordering when the operation
+    /// fails.
+    /// Using [`Acquire`][acq] as success ordering makes the store part of this
+    /// operation [`Relaxed`][rlx], and using [`Release`][rel] makes the
+    /// successful load [`Relaxed`][rlx].
+    /// The failure ordering can only be [`SeqCst`][seq_cst], [`Acquire`][acq]
+    /// or [`Relaxed`][rlx] and must be equivalent to or weaker than the success
+    /// ordering.
+    ///
+    /// [rlx]: Ordering::Relaxed
+    /// [acq]: Ordering::Acquire
+    /// [rel]: Ordering::Release
+    /// [seq_cst]: Ordering::SeqCst
+    #[inline]
+    pub fn compare_exchange(
+        &self,
+        current: MarkedNativePtr<T>,
+        new: MarkedNativePtr<T>,
+        success: Ordering,
+        failure: Ordering,
+    ) -> Result<MarkedNativePtr<T>, MarkedNativePtr<T>> {
+        self.inner
+            .compare_exchange(current.into_usize(), new.into_usize(), success, failure)
+            .map(MarkedNativePtr::from_usize)
+            .map_err(MarkedNativePtr::from_usize)
+    }
+
+    /// Stores a value into the pointer if the current value is the same
+    /// as `current`.
+    ///
+    /// Unlike [`compare_exchange`][AtomicMarkedPtr::compare_exchange], this
+    /// function is allowed to spuriously fail even when the comparison
+    /// succeeds, which can result in more efficient code on some platforms.
+    /// The return value is a result indicating whether the new value was
+    /// written and containing the previous value.
+    ///
+    /// `compare_exchange_weak` takes two [`Ordering`] arguments to describe the
+    /// memory ordering of this operation.
+    /// The first describes the required ordering if the operation succeeds
+    /// while the second describes the required ordering when the operation
+    /// fails.
+    /// Using [`Acquire`][acq] as success ordering makes the store part of this
+    /// operation [`Relaxed`][rlx], and using [`Release`][rel] makes the
+    /// successful load [`Relaxed`][rlx].
+    /// The failure ordering can only be [`SeqCst`][seq_cst], [`Acquire`][acq]
+    /// or [`Relaxed`][rlx] and must be equivalent to or weaker than the success
+    /// ordering.
+    ///
+    /// [rlx]: Ordering::Relaxed
+    /// [acq]: Ordering::Acquire
+    /// [rel]: Ordering::Release
+    /// [seq_cst]: Ordering::SeqCst
+    #[inline]
+    pub fn compare_exchange_weak(
+        &self,
+        current: MarkedNativePtr<T>,
+        new: MarkedNativePtr<T>,
+        success: Ordering,
+        failure: Ordering,
+    ) -> Result<MarkedNativePtr<T>, MarkedNativePtr<T>> {
+        self.inner
+            .compare_exchange_weak(current.into_usize(), new.into_usize(), success, failure)
+            .map(MarkedNativePtr::from_usize)
+            .map_err(MarkedNativePtr::from_usize)
+    }
+
+    /// Adds to the current tag value, returning the previous [`MarkedNativePtr`].
+    ///
+    /// Fetch-and-add operates on the entire [`AtomicMarkedNativePtr`] and has
+    /// no notion of any tag bits or a maximum number thereof.
+    /// Since the operation is also infallible, it may be impossible to
+    /// guarantee that incrementing the tag value can not overflow into the
+    /// pointer bits, which would corrupt both values and lead to undefined
+    /// behaviour as soon as the pointer is de-referenced.
+    ///
+    /// `fetch_add` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation.
+    /// All ordering modes are possible.
+    /// Note that using [`Acquire`][acq] makes the store part of this operation
+    /// [`Relaxed`][rlx], and using [`Release`][rel] makes the load part
+    /// [`Relaxed`][rlx].
+    ///
+    /// [rlx]: Ordering::Relaxed
+    /// [acq]: Ordering::Acquire
+    /// [rel]: Ordering::Release
+    ///
+    /// # Panics
+    ///
+    /// This method panics **in debug mode** if either `value` is greater than
+    /// the greatest possible tag value or if it is detected (after the fact)
+    /// that an overflow has occurred.
+    /// Note, that this does not guarantee that no other thread can observe the
+    /// corrupted pointer value before the panic occurs.
+    #[inline]
+    pub fn fetch_add(&self, value: u16, order: Ordering) -> MarkedNativePtr<T> {
+        let prev = MarkedNativePtr::from_usize(
+            self.inner.fetch_add((value as usize) << Self::MARK_SHIFT, order),
+        );
+        debug_assert!(
+            Self::MARK_MASK - value as usize >= prev.decompose_tag() as usize,
+            "overflow of tag bits detected"
+        );
+        prev
     }
 }
 
