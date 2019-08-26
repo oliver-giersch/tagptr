@@ -282,8 +282,7 @@ impl<T> AtomicMarkedNativePtr<T> {
     ///
     /// # Panics
     ///
-    /// This method panics **in debug mode** if either `value` is greater than
-    /// the greatest possible tag value or if it is detected (after the fact)
+    /// This method panics **in debug mode** if it is detected (after the fact)
     /// that an overflow has occurred.
     /// Note, that this does not guarantee that no other thread can observe the
     /// corrupted pointer value before the panic occurs.
@@ -437,7 +436,7 @@ impl<T> MarkedNativePtr<T> {
         (self.inner as usize >> Self::MARK_SHIFT) as u16
     }
 
-    /// Decomposes the marked pointer, returning an optional reference and the
+    /// Decomposes the [`MarkedNativePtr`], returning an optional reference and the
     /// separated tag.
     ///
     /// In case the pointer stripped of its tag is null, [`None`] is returned as
@@ -457,7 +456,7 @@ impl<T> MarkedNativePtr<T> {
         (self.as_ref(), self.decompose_tag())
     }
 
-    /// Decomposes the marked pointer returning an optional mutable reference
+    /// Decomposes the [`MarkedNativePtr`] returning an optional mutable reference
     /// and the separated tag.
     ///
     /// In case the pointer stripped of its tag is null, [`None`] is returned as
@@ -475,7 +474,7 @@ impl<T> MarkedNativePtr<T> {
         (self.as_mut(), self.decompose_tag())
     }
 
-    /// Decomposes the marked pointer, returning an optional reference and
+    /// Decomposes the [`MarkedNativePtr`], returning an optional reference and
     /// discarding the tag.
     ///
     /// # Safety
@@ -488,7 +487,7 @@ impl<T> MarkedNativePtr<T> {
         self.decompose_ptr().as_ref()
     }
 
-    /// Decomposes the marked pointer, returning an optional mutable reference
+    /// Decomposes the [`MarkedNativePtr`], returning an optional mutable reference
     /// and discarding the tag.
     ///
     /// # Safety
