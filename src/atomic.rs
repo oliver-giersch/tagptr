@@ -57,8 +57,9 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     /// Loads the value of the [`AtomicMarkedPtr`].
     ///
     /// `load` takes an [`Ordering`] argument which describes the memory
-    /// ordering of this operation. Possible values are [`SeqCst`][seq_cst],
-    /// [`Acquire`][acq] and [`Relaxed`][rlx].
+    /// ordering of this operation.
+    /// Possible values are [`SeqCst`][seq_cst], [`Acquire`][acq] and
+    /// [`Relaxed`][rlx].
     ///
     /// # Panics
     ///
@@ -91,8 +92,9 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     /// Stores a value into the [`AtomicMarkedPtr`].
     ///
     /// `store` takes an [`Ordering`] argument which describes the
-    /// memory ordering of this operation. Possible values are
-    /// [`SeqCst`][seq_cst], [`Release`][rel] and [`Relaxed`][rlx].
+    /// memory ordering of this operation.
+    /// Possible values are [`SeqCst`][seq_cst], [`Release`][rel] and
+    /// [`Relaxed`][rlx].
     ///
     /// # Panics
     ///

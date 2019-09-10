@@ -588,7 +588,8 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
 
     /// Decomposes the marked pointer, mutably dereferences the the raw pointer
     /// and returns both the mutable reference and the separated tag. The
-    /// returned reference is not bound to the lifetime of the `MarkedNonNull`.
+    /// returned reference is not bound to the lifetime of the
+    /// [`MarkedNonNull`].
     ///
     /// # Safety
     ///

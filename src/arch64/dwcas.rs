@@ -16,6 +16,7 @@ use core::sync::atomic::Ordering;
 /// concurrent mutation.
 /// The tag value is usually used to prevent the **ABA Problem** with CAS
 /// operations.
+#[repr(align(16))]
 pub struct AtomicTagPtr<T> {
     inner: UnsafeCell<TagPtr<T>>,
 }
@@ -45,8 +46,25 @@ impl<T> AtomicTagPtr<T> {
         Self { inner: UnsafeCell::new(ptr) }
     }
 
+    /// Loads the value of the [`AtomicTagPtr`].
+    ///
+    /// `load` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation.
+    /// Possible values are [`SeqCst`][seq_cst], [`Acquire`][acq] and
+    /// [`Relaxed`][rlx].
+    ///
+    /// # Panics
+    ///
+    /// Panics if `order` is [`Release`][rel] or [`AcqRel`][acq_rel].
+    ///
+    /// [rlx]: Ordering::Relaxed
+    /// [acq]: Ordering::Acquire
+    /// [rel]: Ordering::Release
+    /// [acq_rel]: Ordering::AcqRel
+    /// [seq_cst]: Ordering::SeqCst
     #[inline]
     pub fn load(&self, order: Ordering) -> TagPtr<T> {
+        assert!(order != Ordering::Release && order != Ordering::AcqRel);
         self.compare_and_swap(Self::NULL, Self::NULL, order)
     }
 
@@ -125,6 +143,7 @@ impl<T> Default for TagPtr<T> {
 /*********** impl inherent ************************************************************************/
 
 impl<T> TagPtr<T> {
+    /// Creates a new unmarked `null` pointer.
     #[inline]
     pub const fn null() -> Self {
         Self(ptr::null_mut(), 0)
@@ -136,39 +155,85 @@ impl<T> TagPtr<T> {
         TagPtr(self.0.cast(), self.1)
     }
 
+    /// Creates a new unmarked [`TagPtr`].
     #[inline]
     pub const fn new(ptr: *mut T) -> Self {
         Self(ptr, 0)
     }
 
+    /// Composes a new [`TagPtr`] from a raw `ptr` and a 64-bit `tag` value.
     #[inline]
     pub const fn compose(ptr: *mut T, tag: u64) -> Self {
         Self(ptr, tag)
     }
 
+    /// Decomposes the [`TagPtr`], returning the separated raw pointer and
+    /// its 64-bit tag.
     #[inline]
     pub const fn decompose(self) -> (*mut T, u64) {
         (self.ptr(), self.tag())
     }
 
+    /// Decomposes the [`TagPtr`], returning only the separated raw pointer.
     #[inline]
     pub const fn decompose_ptr(self) -> *mut T {
         self.ptr()
     }
 
+    /// Decomposes the [`TagPtr`], returning only the separated 64-bit tag.
     #[inline]
     pub const fn decompose_tag(self) -> u64 {
         self.tag()
     }
 
+    /// Returns the raw pointer.
     #[inline]
     pub const fn ptr(self) -> *mut T {
         self.0
     }
 
+    /// Returns the 64-bit tag.
     #[inline]
     pub const fn tag(self) -> u64 {
         self.1
+    }
+
+    /// Decomposes the marked pointer, returning an optional reference and the
+    /// separated tag.
+    ///
+    /// In case the pointer stripped of its tag is null, [`None`] is returned as
+    /// part of the tuple. Otherwise, the reference is wrapped in a [`Some`].
+    ///
+    /// # Safety
+    ///
+    /// While this method and its mutable counterpart are useful for
+    /// null-safety, it is important to note that this is still an unsafe
+    /// operation because the returned value could be pointing to invalid
+    /// memory.
+    ///
+    /// Additionally, the lifetime 'a returned is arbitrarily chosen and does
+    /// not necessarily reflect the actual lifetime of the data.
+    #[inline]
+    pub unsafe fn decompose_ref<'a>(self) -> (Option<&'a T>, u64) {
+        (self.0.as_ref(), self.1)
+    }
+
+    /// Decomposes the marked pointer returning an optional mutable reference
+    /// and the separated tag.
+    ///
+    /// In case the pointer stripped of its tag is null, [`None`] is returned as
+    /// part of the tuple. Otherwise, the mutable reference is wrapped in a
+    /// [`Some`].
+    ///
+    /// # Safety
+    ///
+    /// As with [`decompose_ref`][MarkedPtr::decompose_ref], this is unsafe
+    /// because it cannot verify the validity of the returned pointer, nor can
+    /// it ensure that the lifetime `'a` returned is indeed a valid lifetime for
+    /// the contained data.
+    #[inline]
+    pub unsafe fn decompose_mut<'a>(self) -> (Option<&'a mut T>, u64) {
+        (self.0.as_mut(), self.1)
     }
 
     #[inline]
