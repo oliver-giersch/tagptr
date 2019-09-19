@@ -7,6 +7,7 @@
 #[cfg(all(target_arch = "x86_64", feature = "nightly"))]
 mod dwcas;
 
+use core::cmp;
 use core::marker::PhantomData;
 use core::ptr;
 use core::sync::atomic::{AtomicUsize, Ordering};
@@ -498,5 +499,36 @@ impl<T> MarkedNativePtr<T> {
     #[inline]
     pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
         self.decompose_ptr().as_mut()
+    }
+}
+
+/********** impl PartialEq ************************************************************************/
+
+impl<T> PartialEq for MarkedNativePtr<T> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.inner.eq(&other.inner)
+    }
+}
+
+/********** impl PartialOrd ***********************************************************************/
+
+impl<T> PartialOrd for MarkedNativePtr<T> {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        self.inner.partial_cmp(&other.inner)
+    }
+}
+
+/********** impl Eq *******************************************************************************/
+
+impl<T> Eq for MarkedNativePtr<T> {}
+
+/********** impl Ord ******************************************************************************/
+
+impl<T> Ord for MarkedNativePtr<T> {
+    #[inline]
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.inner.cmp(&other.inner)
     }
 }
