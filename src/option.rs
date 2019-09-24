@@ -1,4 +1,5 @@
 use core::mem;
+use core::ptr;
 
 use crate::{
     MarkedOption::{self, Null, Value},
@@ -61,10 +62,7 @@ impl<T: NonNullable> MarkedOption<T> {
     /// by `msg`.
     #[inline]
     pub fn expect(self, msg: &str) -> T {
-        match self {
-            Value(ptr) => ptr,
-            Null(_) => expect_failed(msg),
-        }
+        self.value().expect(msg)
     }
 
     /// Moves the pointer out of the [`MarkedOption`] if it is
@@ -161,6 +159,31 @@ impl<T: NonNullable> MarkedOption<T> {
     pub fn replace(&mut self, value: T) -> Self {
         mem::replace(self, Value(value))
     }
+
+    #[inline]
+    pub fn decompose(&self) -> (*mut T, usize) {
+        match self {
+            Value(ptr) => (ptr.as_mut_ptr(), ptr.tag()),
+            Null(tag) => (ptr::null_mut(), *tag),
+        }
+    }
+
+    #[inline]
+    pub fn decompose_ptr(&self) -> *mut T {
+        match self {
+            Value(ptr) => ptr.as_mut_ptr(),
+            Null(_) => ptr::null_mut()
+        }
+    }
+
+    /// Returns the [`MarkedOption`]'s tag.
+    #[inline]
+    pub fn decompose_tag(&self) -> usize {
+        match self {
+            Value(ptr) => ptr.tag(),
+            Null(tag) => *tag
+        }
+    }
 }
 
 /*********** impl From ****************************************************************************/
@@ -193,12 +216,4 @@ impl<'a, T: NonNullable> From<&'a mut MarkedOption<T>> for MarkedOption<&'a mut 
             Null(tag) => Null(*tag),
         }
     }
-}
-
-/*********** helper function **********************************************************************/
-
-#[inline(never)]
-#[cold]
-fn expect_failed(msg: &str) -> ! {
-    panic!("{}", msg)
 }

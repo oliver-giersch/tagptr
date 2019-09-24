@@ -1,10 +1,13 @@
 //! Strongly typed marked pointers for storing bit patterns alongside pointers
 //!
+//!
+#![no_std]
+
+#![warn(missing_docs)]
 
 #![allow(clippy::should_implement_trait)]
-#![warn(missing_docs)]
+
 #![cfg_attr(all(target_arch = "x86_64", feature = "nightly"), feature(stdsimd))]
-#![no_std]
 
 #[cfg(any(target_arch = "x86_64", target_arch = "powerpc64", target_arch = "aarch64"))]
 pub mod arch64;
@@ -19,6 +22,8 @@ use core::ptr::NonNull;
 use core::sync::atomic::AtomicUsize;
 
 pub use typenum;
+
+use typenum::Unsigned;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // AtomicMarkedPtr
@@ -87,34 +92,108 @@ pub enum MarkedOption<T: NonNullable> {
 // NonNullable (trait)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/// A trait for non-nullable pointer and reference types.
+/// A trait for non-nullable thin pointer and reference types.
 pub trait NonNullable: Sized {
     /// The referenced or pointed-to type.
-    type Item: ?Sized;
+    type Item: Sized;
+
+    #[inline]
+    fn tag(&self) -> usize {
+        0
+    }
+
+    fn as_const_ptr(&self) -> *const Self::Item;
+    fn as_mut_ptr(&self) -> *mut Self::Item;
+    fn as_non_null(&self) -> NonNull<Self::Item>;
 }
 
 /********** impl for NonNull<T> *******************************************************************/
 
-impl<T: ?Sized> NonNullable for NonNull<T> {
+impl<T: Sized> NonNullable for NonNull<T> {
     type Item = T;
+
+    #[inline]
+    fn as_const_ptr(&self) -> *const Self::Item {
+        self.as_ptr() as *const _
+    }
+
+    #[inline]
+    fn as_mut_ptr(&self) -> *mut Self::Item {
+        self.as_ptr()
+    }
+
+    #[inline]
+    fn as_non_null(&self) -> NonNull<Self::Item> {
+        *self
+    }
 }
 
 /********** impl for &'a T ************************************************************************/
 
-impl<'a, T: ?Sized> NonNullable for &'a T {
+impl<'a, T: Sized> NonNullable for &'a T {
     type Item = T;
+
+    #[inline]
+    fn as_const_ptr(&self) -> *const Self::Item {
+        *self as *const _
+    }
+
+    #[inline]
+    fn as_mut_ptr(&self) -> *mut Self::Item {
+        *self as *const _ as *mut _
+    }
+
+    #[inline]
+    fn as_non_null(&self) -> NonNull<Self::Item> {
+        NonNull::from(*self)
+    }
 }
 
 /********** impl for &'a mut T ********************************************************************/
 
-impl<'a, T: ?Sized> NonNullable for &'a mut T {
+impl<'a, T: Sized> NonNullable for &'a mut T {
     type Item = T;
+
+    #[inline]
+    fn as_const_ptr(&self) -> *const Self::Item {
+        *self as *const _
+    }
+
+    #[inline]
+    fn as_mut_ptr(&self) -> *mut Self::Item {
+        *self as *const _ as *mut _
+    }
+
+    #[inline]
+    fn as_non_null(&self) -> NonNull<Self::Item> {
+        NonNull::from(&**self)
+    }
 }
 
 /********** impl for MarkedNonNull ****************************************************************/
 
-impl<T, N> NonNullable for MarkedNonNull<T, N> {
+impl<T, N: Unsigned> NonNullable for MarkedNonNull<T, N> {
     type Item = T;
+
+    #[inline]
+    fn tag(&self) -> usize {
+        self.decompose_tag()
+    }
+
+    #[inline]
+    fn as_const_ptr(&self) -> *const Self::Item {
+        self.decompose_ptr() as *const _
+    }
+
+    #[inline]
+    fn as_mut_ptr(&self) -> *mut Self::Item {
+        self.decompose_ptr()
+    }
+
+    #[inline]
+    fn as_non_null(&self) -> NonNull<Self::Item> {
+        self.decompose_non_null()
+    }
 }
 
 /********** helper functions **********************************************************************/
