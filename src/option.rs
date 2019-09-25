@@ -17,7 +17,7 @@ impl<T: NonNullable> Default for MarkedOption<T> {
 
 /********** impl inherent *************************************************************************/
 
-impl<T: NonNullable> MarkedOption<T> {
+impl<P: NonNullable> MarkedOption<P> {
     /// Returns `true` if `self` contains a [`Null`] variant.
     #[inline]
     pub fn is_null(&self) -> bool {
@@ -38,7 +38,7 @@ impl<T: NonNullable> MarkedOption<T> {
 
     /// Converts from `MarkedOption<T>` to `MarkedOption<&T>`.
     #[inline]
-    pub fn as_ref(&self) -> MarkedOption<&T> {
+    pub fn as_ref(&self) -> MarkedOption<&P> {
         match self {
             Value(ptr) => Value(ptr),
             Null(tag) => Null(*tag),
@@ -47,7 +47,7 @@ impl<T: NonNullable> MarkedOption<T> {
 
     /// Converts from `MarkedOption<T>` to `MarkedOption<&mut T>`.
     #[inline]
-    pub fn as_mut(&mut self) -> MarkedOption<&mut T> {
+    pub fn as_mut(&mut self) -> MarkedOption<&mut P> {
         match self {
             Value(ptr) => Value(ptr),
             Null(tag) => Null(*tag),
@@ -61,7 +61,7 @@ impl<T: NonNullable> MarkedOption<T> {
     /// Panics, if the value is a [`Null`] with a custom panic message provided
     /// by `msg`.
     #[inline]
-    pub fn expect(self, msg: &str) -> T {
+    pub fn expect(self, msg: &str) -> P {
         self.value().expect(msg)
     }
 
@@ -72,7 +72,7 @@ impl<T: NonNullable> MarkedOption<T> {
     ///
     /// This method panics, if the [`MarkedOption`] contains a [`Null`] variant.
     #[inline]
-    pub fn unwrap(self) -> T {
+    pub fn unwrap(self) -> P {
         match self {
             Value(ptr) => ptr,
             _ => panic!("called `unwrap` on `Null` variant"),
@@ -81,7 +81,7 @@ impl<T: NonNullable> MarkedOption<T> {
 
     /// Returns the contained value or the result of the given `func`.
     #[inline]
-    pub fn unwrap_or_else(self, func: impl (FnOnce(usize) -> T)) -> T {
+    pub fn unwrap_or_else(self, func: impl (FnOnce(usize) -> P)) -> P {
         match self {
             Value(ptr) => ptr,
             Null(tag) => func(tag),
@@ -106,7 +106,7 @@ impl<T: NonNullable> MarkedOption<T> {
     /// Maps a `MarkedOption<T>` to `MarkedOption<U>` by applying a function to
     /// a contained value.
     #[inline]
-    pub fn map<U: NonNullable>(self, func: impl FnOnce(T) -> U) -> MarkedOption<U> {
+    pub fn map<U: NonNullable>(self, func: impl FnOnce(P) -> U) -> MarkedOption<U> {
         match self {
             Value(ptr) => Value(func(ptr)),
             Null(tag) => Null(tag),
@@ -116,7 +116,7 @@ impl<T: NonNullable> MarkedOption<T> {
     /// Applies a function `func` to the contained pointer (if any) or returns
     /// the provided `default` value.
     #[inline]
-    pub fn map_or<U, F>(self, default: U, func: impl FnOnce(T) -> U) -> U {
+    pub fn map_or<U, F>(self, default: U, func: impl FnOnce(P) -> U) -> U {
         match self {
             Value(ptr) => func(ptr),
             Null(_) => default,
@@ -129,7 +129,7 @@ impl<T: NonNullable> MarkedOption<T> {
     pub fn map_or_else<U: NonNullable>(
         self,
         default: impl FnOnce(usize) -> U,
-        func: impl FnOnce(T) -> U,
+        func: impl FnOnce(P) -> U,
     ) -> U {
         match self {
             Value(ptr) => func(ptr),
@@ -139,7 +139,7 @@ impl<T: NonNullable> MarkedOption<T> {
 
     /// Converts `self` from `MarkedOption<T>` to [`Option<T>`][Option].
     #[inline]
-    pub fn value(self) -> Option<T> {
+    pub fn value(self) -> Option<P> {
         match self {
             Value(ptr) => Some(ptr),
             _ => None,
@@ -156,12 +156,12 @@ impl<T: NonNullable> MarkedOption<T> {
     /// Replaces the actual value in the [`MarkedOption`] with the given
     /// `value`, returning the old value.
     #[inline]
-    pub fn replace(&mut self, value: T) -> Self {
+    pub fn replace(&mut self, value: P) -> Self {
         mem::replace(self, Value(value))
     }
 
     #[inline]
-    pub fn decompose(&self) -> (*mut T, usize) {
+    pub fn decompose(&self) -> (*mut P::Item, usize) {
         match self {
             Value(ptr) => (ptr.as_mut_ptr(), ptr.tag()),
             Null(tag) => (ptr::null_mut(), *tag),
@@ -169,7 +169,7 @@ impl<T: NonNullable> MarkedOption<T> {
     }
 
     #[inline]
-    pub fn decompose_ptr(&self) -> *mut T {
+    pub fn decompose_ptr(&self) -> *mut P::Item {
         match self {
             Value(ptr) => ptr.as_mut_ptr(),
             Null(_) => ptr::null_mut()
