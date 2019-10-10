@@ -97,13 +97,19 @@ pub trait NonNullable: Sized {
     /// The referenced or pointed-to type.
     type Item: Sized;
 
+    /// TODO: Docs...
     #[inline]
     fn tag(&self) -> usize {
         0
     }
 
+    /// TODO: Docs...
     fn as_const_ptr(&self) -> *const Self::Item;
+
+    /// TODO: Docs...
     fn as_mut_ptr(&self) -> *mut Self::Item;
+
+    /// TODO: Docs...
     fn as_non_null(&self) -> NonNull<Self::Item>;
 }
 

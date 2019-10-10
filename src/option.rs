@@ -1,7 +1,11 @@
 use core::mem;
 use core::ptr;
 
+use typenum::Unsigned;
+
 use crate::{
+    MarkedPtr,
+    MarkedNonNull,
     MarkedOption::{self, Null, Value},
     NonNullable,
 };
@@ -187,6 +191,16 @@ impl<P: NonNullable> MarkedOption<P> {
 }
 
 /*********** impl From ****************************************************************************/
+
+impl<T, N: Unsigned> From<MarkedPtr<T, N>> for MarkedOption<MarkedNonNull<T, N>> {
+    #[inline]
+    fn from(marked_ptr: MarkedPtr<T, N>) -> Self {
+        match marked_ptr.decompose() {
+            (ptr, _) if !ptr.is_null() => Value(unsafe { MarkedNonNull::new_unchecked(marked_ptr) }),
+            (_, tag) => Null(tag),
+        }
+    }
+}
 
 impl<T: NonNullable> From<Option<T>> for MarkedOption<T> {
     #[inline]

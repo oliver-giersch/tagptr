@@ -476,15 +476,6 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
         NonNull::new(ptr).map(Self::from)
     }
 
-    /// Creates a new [`MarkedNonNull`] wrapped in a [`MarkedOption`].
-    #[inline]
-    pub fn from_marked_ptr(marked_ptr: MarkedPtr<T, N>) -> MarkedOption<Self> {
-        match marked_ptr.decompose() {
-            (ptr, _) if !ptr.is_null() => Value(unsafe { Self::new_unchecked(marked_ptr) }),
-            (_, tag) => Null(tag),
-        }
-    }
-
     /// Composes a new [`MarkedNonNull`] from a raw `ptr` and a `tag` value.
     ///
     /// # Panics
@@ -724,7 +715,7 @@ impl<T, N: Unsigned> TryFrom<MarkedPtr<T, N>> for MarkedNonNull<T, N> {
 
     #[inline]
     fn try_from(marked_ptr: MarkedPtr<T, N>) -> Result<Self, Self::Error> {
-        match Self::from_marked_ptr(marked_ptr) {
+        match MarkedOption::from(marked_ptr) {
             Value(ptr) => Ok(ptr),
             Null(_) => Err(NullError(())),
         }
