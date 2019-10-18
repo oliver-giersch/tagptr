@@ -68,13 +68,6 @@ impl<T> AtomicTagPtr<T> {
         self.compare_and_swap(Self::NULL, Self::NULL, order)
     }
 
-    pub fn store(&self, ptr: TagPtr<T>, order: Ordering) {
-        let mut curr = Self::NULL;
-        while curr != ptr {
-            curr = self.compare_and_swap(curr, ptr, order);
-        }
-    }
-
     #[inline]
     pub fn compare_and_swap(
         &self,

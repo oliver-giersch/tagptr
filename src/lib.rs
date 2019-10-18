@@ -92,24 +92,28 @@ pub enum MarkedOption<T: NonNullable> {
 // NonNullable (trait)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/// A trait for non-nullable thin pointer and reference types.
+/// A trait for non-nullable (thin) pointer and reference types.
 pub trait NonNullable: Sized {
     /// The referenced or pointed-to type.
     type Item: Sized;
 
-    /// TODO: Docs...
+    /// Returns the tag stored in the available free bits.
+    ///
+    /// For unmarked types like `&T` this will always return `0`.
     #[inline]
     fn tag(&self) -> usize {
         0
     }
 
-    /// TODO: Docs...
+    /// Returns the value of `self` as a `const` pointer that is guaranteed to
+    /// be non-null.
     fn as_const_ptr(&self) -> *const Self::Item;
 
-    /// TODO: Docs...
+    /// Returns the value of `self` as a `mut` pointer that is guaranteed to
+    /// be non-null.
     fn as_mut_ptr(&self) -> *mut Self::Item;
 
-    /// TODO: Docs...
+    /// Returns the value of `self` as a [`NonNull`].
     fn as_non_null(&self) -> NonNull<Self::Item>;
 }
 

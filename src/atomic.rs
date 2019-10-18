@@ -111,8 +111,8 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     /// ```
     /// use std::sync::atomic::Ordering;
     ///
-    /// type MarkedPtr<T> = conquer_pointer::MarkedPtr<T, reclaim::typenum::U0>;
-    /// type AtomicMarkedPtr<T> = conquer_pointer::AtomicMarkedPtr<T, reclaim::typenum::U0>;
+    /// type MarkedPtr<T> = conquer_pointer::MarkedPtr<T, typenum::U0>;
+    /// type AtomicMarkedPtr<T> = conquer_pointer::AtomicMarkedPtr<T, typenum::U0>;
     ///
     /// let atomic = AtomicMarkedPtr::null();
     /// let store = MarkedPtr::new(&mut 10);
