@@ -2,11 +2,8 @@
 //! patterns within a single pointer-width word.
 
 #![no_std]
-
 #![warn(missing_docs)]
-
 #![allow(clippy::should_implement_trait)]
-
 #![cfg_attr(all(target_arch = "x86_64", feature = "nightly"), feature(stdsimd))]
 
 #[cfg(any(target_arch = "x86_64", target_arch = "powerpc64", target_arch = "aarch64"))]
@@ -24,6 +21,8 @@ use core::sync::atomic::AtomicUsize;
 pub use typenum;
 
 use typenum::Unsigned;
+
+pub use crate::raw::NullError;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // AtomicMarkedPtr
@@ -65,8 +64,12 @@ pub struct MarkedPtr<T, N> {
 
 /// A non-nullable marked raw pointer type like [`NonNull`].
 ///
-/// Note, that unlike [`MarkedPtr`] this also **excludes** marked
-/// null-pointers.
+/// Note, that unlike [`MarkedPtr`] and [`NonNull`] this also **excludes**
+/// marked null-pointers, which gives this type some additional invariants:
+/// For instance, a pointer value `0x1`, despite not pointing at valid memory,
+/// is still valid for constructing both [`NonNull`] and [`MarkedPtr`] values
+/// for any `N`.
+/// TODO: ...
 pub struct MarkedNonNull<T, N> {
     inner: NonNull<T>,
     _marker: PhantomData<N>,
@@ -86,6 +89,54 @@ pub enum MarkedOption<T: NonNullable> {
     Value(T),
     /// Null pointer, potentially marked
     Null(usize),
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// MarkedNonNullable (trait)
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// TODO: Docs...
+pub trait MarkedNonNullable: NonNullable {
+    /// TODO: Docs...
+    type MarkBits: Unsigned;
+
+    /// TODO: Docs...
+    fn decompose(&self) -> (NonNull<Self::Item>, usize);
+
+    /// TODO: Docs...
+    fn decompose_ptr(&self) -> *mut Self::Item;
+
+    /// TODO: Docs...
+    fn decompose_non_null(&self) -> NonNull<Self::Item>;
+
+    /// TODO: Docs...
+    fn decompose_tag(&self) -> usize;
+}
+
+/********** impl for MarkedNonNull<T> *************************************************************/
+
+impl<T, N: Unsigned> MarkedNonNullable for MarkedNonNull<T, N> {
+    type MarkBits = N;
+
+    #[inline]
+    fn decompose(&self) -> (NonNull<Self::Item>, usize) {
+        MarkedNonNull::decompose(*self)
+    }
+
+    #[inline]
+    fn decompose_ptr(&self) -> *mut Self::Item {
+        MarkedNonNull::decompose_ptr(*self)
+    }
+
+    #[inline]
+    fn decompose_non_null(&self) -> NonNull<Self::Item> {
+        MarkedNonNull::decompose_non_null(*self)
+    }
+
+    #[inline]
+    fn decompose_tag(&self) -> usize {
+        MarkedNonNull::decompose_tag(*self)
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -223,7 +274,7 @@ const fn mark_mask<T>(mark_bits: usize) -> usize {
 }
 
 #[inline]
-fn compose<T>(mark_bits: usize, ptr: *mut T, tag: usize) -> *mut T {
+fn compose<T>(ptr: *mut T, tag: usize, mark_bits: usize) -> *mut T {
     debug_assert_eq!(ptr as usize & mark_mask::<T>(mark_bits), 0);
     ((ptr as usize) | (mark_mask::<T>(mark_bits) & tag)) as *mut _
 }

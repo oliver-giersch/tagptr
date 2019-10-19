@@ -24,10 +24,7 @@ use crate::{
 impl<T, N> Clone for MarkedPtr<T, N> {
     #[inline]
     fn clone(&self) -> Self {
-        Self {
-            inner: self.inner,
-            _marker: PhantomData,
-        }
+        Self { inner: self.inner, _marker: PhantomData }
     }
 }
 
@@ -50,25 +47,13 @@ impl<T, N> MarkedPtr<T, N> {
     /// Creates a new unmarked [`MarkedPtr`].
     #[inline]
     pub const fn new(ptr: *mut T) -> Self {
-        Self {
-            inner: ptr,
-            _marker: PhantomData,
-        }
+        Self { inner: ptr, _marker: PhantomData }
     }
 
     /// Creates a new unmarked `null` pointer.
     #[inline]
     pub const fn null() -> Self {
         Self::new(ptr::null_mut())
-    }
-
-    /// Casts to a pointer of type `U`.
-    #[inline]
-    pub const fn cast<U>(self) -> MarkedPtr<U, N> {
-        MarkedPtr {
-            inner: self.inner.cast(),
-            _marker: PhantomData,
-        }
     }
 
     /// Creates a [`MarkedPtr`] from the integer (numeric) representation of a
@@ -86,10 +71,13 @@ impl<T, N> MarkedPtr<T, N> {
     /// ```
     #[inline]
     pub const fn from_usize(val: usize) -> Self {
-        Self {
-            inner: val as *mut _,
-            _marker: PhantomData,
-        }
+        Self { inner: val as *mut _, _marker: PhantomData }
+    }
+
+    /// Casts to a pointer of type `U`.
+    #[inline]
+    pub const fn cast<U>(self) -> MarkedPtr<U, N> {
+        MarkedPtr { inner: self.inner.cast(), _marker: PhantomData }
     }
 
     /// Returns the inner pointer *as is*, meaning any potential tag is not
@@ -120,7 +108,26 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
     /// The bitmask for the (higher) pointer bits.
     pub const POINTER_MASK: usize = !Self::MARK_MASK;
 
-    /// Clears the tag from `self` and returns the same but unmarked pointer.
+    /// Composes a new [`MarkedPtr`] from a raw `ptr` and a `tag` value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use core::ptr;
+    ///
+    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, typenum::U2>;
+    ///
+    /// let raw = &1 as *const i32 as *mut i32;
+    /// let ptr = MarkedPtr::compose(raw, 0b11);
+    /// assert_eq!(ptr.decompose(), (raw, 0b11));
+    /// ```
+    #[inline]
+    pub fn compose(ptr: *mut T, tag: usize) -> Self {
+        Self::new(crate::compose(ptr, tag, Self::MARK_BITS))
+    }
+
+    /// Clears the tag from `self` and returns the same pointer but stripped of
+    /// its mark bits.
     ///
     /// # Examples
     ///
@@ -154,24 +161,6 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
     #[inline]
     pub fn with_tag(self, tag: usize) -> Self {
         Self::compose(self.decompose_ptr(), tag)
-    }
-
-    /// Composes a new [`MarkedPtr`] from a raw `ptr` and a `tag` value.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use core::ptr;
-    ///
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, typenum::U2>;
-    ///
-    /// let raw = &1 as *const i32 as *mut i32;
-    /// let ptr = MarkedPtr::compose(raw, 0b11);
-    /// assert_eq!(ptr.decompose(), (raw, 0b11));
-    /// ```
-    #[inline]
-    pub fn compose(ptr: *mut T, tag: usize) -> Self {
-        Self::new(crate::compose(Self::MARK_BITS, ptr, tag))
     }
 
     /// Decomposes the [`MarkedPtr`], returning the separated raw pointer and
@@ -370,10 +359,7 @@ impl<T, N> Hash for MarkedPtr<T, N> {
 impl<T, N> Clone for MarkedNonNull<T, N> {
     #[inline]
     fn clone(&self) -> Self {
-        Self {
-            inner: self.inner,
-            _marker: PhantomData,
-        }
+        Self { inner: self.inner, _marker: PhantomData }
     }
 }
 
@@ -384,23 +370,6 @@ impl<T, N> Copy for MarkedNonNull<T, N> {}
 /********** impl inherent (const) *****************************************************************/
 
 impl<T, N> MarkedNonNull<T, N> {
-    /// Creates a new [`MarkedNonNull`] that is dangling, but well-aligned.
-    ///
-    /// This is useful for initializing types which lazily allocate, like
-    /// `Vec::new` does.
-    ///
-    /// Note that the pointer value may potentially represent a valid pointer to
-    /// a `T`, which means this must not be used as a "not yet initialized"
-    /// sentinel value. Types that lazily allocate must track initialization by
-    /// some other means.
-    #[inline]
-    pub const fn dangling() -> Self {
-        Self {
-            inner: NonNull::dangling(),
-            _marker: PhantomData,
-        }
-    }
-
     /// Creates a new [`MarkedNonNull`] from a marked pointer without checking
     /// for `null`.
     ///
@@ -412,26 +381,26 @@ impl<T, N> MarkedNonNull<T, N> {
     /// than the smallest possible well-aligned pointer for type `T`.
     #[inline]
     pub const unsafe fn new_unchecked(ptr: MarkedPtr<T, N>) -> Self {
-        Self {
-            inner: NonNull::new_unchecked(ptr.inner),
-            _marker: PhantomData,
-        }
+        Self { inner: NonNull::new_unchecked(ptr.inner), _marker: PhantomData }
+    }
+
+    /// TODO: docs...
+    #[inline]
+    pub const unsafe fn from_non_null_unchecked(non_null: NonNull<T>) -> Self {
+        Self { inner: non_null, _marker: PhantomData }
     }
 
     /// Cast to a pointer of another type.
     #[inline]
     pub const fn cast<U>(self) -> MarkedNonNull<U, N> {
-        MarkedNonNull {
-            inner: self.inner.cast(),
-            _marker: PhantomData,
-        }
+        MarkedNonNull { inner: self.inner.cast(), _marker: PhantomData }
     }
 
     /// Returns the inner pointer *as is*, meaning any potential tag is not
     /// stripped.
     ///
     /// De-referencing the returned pointer results in undefined behaviour, if
-    /// the pointer is still marked and even if the pointer itself points to a
+    /// the pointer is still marked, even if the pointer itself points to a
     /// valid and live value.
     ///
     /// Use e.g. [`decompose`][MarkedNonNull::decompose] instead to get the
@@ -460,42 +429,94 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
 
     /// Creates a new [`MarkedNonNull`] from a raw pointer.
     ///
-    /// If `ptr` is `null`, [`None`] is returned.
-    ///
-    /// # Panics
-    ///
-    /// This function panics, if `ptr` contains any lower bits, that could be
-    /// interpreted as tag bits.
+    /// If `ptr` is `null`, [`None`] is returned and any potential mark bits
+    /// are simply ignored.
     #[inline]
-    pub fn new(ptr: *mut T) -> Option<MarkedNonNull<T, N>> {
-        assert_eq!(
-            ptr as usize & Self::MARK_MASK,
-            0,
-            "`ptr` is not well aligned"
-        );
-        NonNull::new(ptr).map(Self::from)
+    pub fn try_from_ptr(ptr: *mut T) -> Option<MarkedNonNull<T, N>> {
+        if !crate::decompose_ptr::<T>(ptr as usize, Self::MARK_BITS).is_null() {
+            Some(unsafe { MarkedNonNull::new_unchecked(MarkedPtr::new(ptr)) })
+        } else {
+            None
+        }
+    }
+
+    /// Creates a new [`MarkedNonNull`] from a [`MarkedPtr`].
+    ///
+    /// If `ptr` is `null`, [`None`] is returned and any potential mark bits
+    /// are simply ignored.
+    #[inline]
+    pub fn try_from_marked_ptr(marked_ptr: MarkedPtr<T, N>) -> Option<Self> {
+        Self::try_from(marked_ptr).ok()
     }
 
     /// Composes a new [`MarkedNonNull`] from a raw `ptr` and a `tag` value.
     ///
+    /// For a fallible version of this function, see
+    /// [`try_compose`][MarkedNonNull::try_compose].
+    ///
     /// # Panics
     ///
-    /// This function panics, if `ptr` could be interpreted as a marked `null`
-    /// pointer.
+    /// This function panics, if `ptr` is a actually `null` pointer if its first
+    //    /// `N` bits are interpreted as tag.
+    /// For instance, `0x1` would be a valid value for `NonNull`, even though
+    /// de-referencing it would be undefined behaviour.
+    /// The same value is not valid for `MarkedNonNull` with `N > 0`, however,
+    /// since it would be interpreted as a `null` pointer with tag value of `1`.
+    /// This is usually not a problem as long as `ptr` is well aligned, since
+    /// the number of mark bits can not exceed `T`'s alignment.
     #[inline]
     pub fn compose(ptr: NonNull<T>, tag: usize) -> Self {
-        assert_eq!(
-            ptr.as_ptr() as usize & Self::MARK_MASK,
-            0,
-            "`ptr` is not well aligned"
-        );
-        unsafe {
-            Self::from(NonNull::new_unchecked(crate::compose(
-                Self::MARK_BITS,
-                ptr.as_ptr(),
-                tag,
-            )))
+        Self::try_compose(ptr, tag)
+            .expect("`ptr` is misaligned for `N` mark bits - could be interpreted as a marked `null` pointer.")
+    }
+
+    /// Attempts to compose a new [`MarkedNonNull`] from a raw `ptr` and a `tag`
+    /// value.
+    ///
+    /// # Errors
+    ///
+    /// This function fails, if `ptr` is a actually `null` pointer if its first
+    /// `N` bits are interpreted as tag.
+    /// For instance, `0x1` would be a valid value for `NonNull`, even though
+    /// de-referencing it would be undefined behaviour.
+    /// The same value is not valid for `MarkedNonNull` with `N > 0`, however,
+    /// since it would be interpreted as a `null` pointer with tag value of `1`.
+    /// This is usually not a problem as long as `ptr` is well aligned, since
+    /// the number of mark bits can not exceed `T`'s alignment.
+    #[inline]
+    pub fn try_compose(ptr: NonNull<T>, tag: usize) -> Result<Self, NullError> {
+        if !crate::decompose_ptr::<T>(ptr.as_ptr() as usize, Self::MARK_BITS).is_null() {
+            Ok(unsafe { Self::compose_unchecked(ptr, tag) })
+        } else {
+            Err(NullError(()))
         }
+    }
+
+    /// Composes a new [`MarkedNonNull`] from a raw `ptr` and a `tag` value
+    /// without checking if `ptr` is actually a `null` pointer if it is first
+    /// `N` bits are interpreted as tag.
+    ///
+    /// # Safety
+    ///
+    /// The caller has to ensure, that `ptr` is not a marked `null` pointer for
+    /// `N` mark bits.
+    #[inline]
+    pub unsafe fn compose_unchecked(ptr: NonNull<T>, tag: usize) -> Self {
+        Self::new_unchecked(MarkedPtr::compose(ptr.as_ptr(), tag))
+    }
+
+    /// Clears the tag from `self` and returns the same pointer but stripped of
+    /// its mark bits.
+    #[inline]
+    pub fn clear_tag(self) -> Self {
+        let clear = crate::decompose_ptr::<T>(self.inner.as_ptr() as usize, Self::MARK_BITS);
+        Self { inner: unsafe { NonNull::new_unchecked(clear) }, _marker: PhantomData }
+    }
+
+    /// TODO: Docs...
+    #[inline]
+    pub fn with_tag(self, tag: usize) -> Self {
+        Self::compose(self.decompose_non_null(), tag)
     }
 
     /// Decomposes the marked pointer, returning the separated raw [`NonNull`]
@@ -660,10 +681,7 @@ impl<T, N: Unsigned> fmt::Debug for MarkedNonNull<T, N> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (ptr, tag) = self.decompose();
-        f.debug_struct("MarkedNonNull")
-            .field("ptr", &ptr)
-            .field("tag", &tag)
-            .finish()
+        f.debug_struct("MarkedNonNull").field("ptr", &ptr).field("tag", &tag).finish()
     }
 }
 
@@ -678,33 +696,17 @@ impl<T, N: Unsigned> fmt::Pointer for MarkedNonNull<T, N> {
 
 /********** impl From *****************************************************************************/
 
-impl<T, N> From<NonNull<T>> for MarkedNonNull<T, N> {
-    #[inline]
-    fn from(ptr: NonNull<T>) -> Self {
-        Self {
-            inner: ptr,
-            _marker: PhantomData,
-        }
-    }
-}
-
 impl<'a, T, N> From<&'a T> for MarkedNonNull<T, N> {
     #[inline]
     fn from(reference: &T) -> Self {
-        Self {
-            inner: NonNull::from(reference),
-            _marker: PhantomData,
-        }
+        Self { inner: NonNull::from(reference), _marker: PhantomData }
     }
 }
 
 impl<'a, T, N> From<&'a mut T> for MarkedNonNull<T, N> {
     #[inline]
     fn from(reference: &mut T) -> Self {
-        Self {
-            inner: NonNull::from(reference),
-            _marker: PhantomData,
-        }
+        Self { inner: NonNull::from(reference), _marker: PhantomData }
     }
 }
 
@@ -718,6 +720,19 @@ impl<T, N: Unsigned> TryFrom<MarkedPtr<T, N>> for MarkedNonNull<T, N> {
         match MarkedOption::from(marked_ptr) {
             Value(ptr) => Ok(ptr),
             Null(_) => Err(NullError(())),
+        }
+    }
+}
+
+impl<T, N: Unsigned> TryFrom<NonNull<T>> for MarkedNonNull<T, N> {
+    type Error = NullError;
+
+    #[inline]
+    fn try_from(non_null: NonNull<T>) -> Result<Self, Self::Error> {
+        if non_null.as_ptr() as usize & Self::POINTER_MASK == 0 {
+            Err(NullError(()))
+        } else {
+            Ok(Self { inner: non_null, _marker: PhantomData })
         }
     }
 }
@@ -766,7 +781,8 @@ impl<T, N> Hash for MarkedNonNull<T, N> {
 // NullError
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/// Error type for fallible conversion from [`MarkedPtr`] to [`MarkedNonNull`].
+/// An error type for fallible conversion from [`MarkedPtr`] to
+/// [`MarkedNonNull`].
 #[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub struct NullError(());
 

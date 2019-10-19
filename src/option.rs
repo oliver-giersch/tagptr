@@ -4,10 +4,9 @@ use core::ptr;
 use typenum::Unsigned;
 
 use crate::{
-    MarkedPtr,
-    MarkedNonNull,
+    MarkedNonNull, MarkedNonNullable,
     MarkedOption::{self, Null, Value},
-    NonNullable,
+    MarkedPtr, NonNullable,
 };
 
 /********** impl Default **************************************************************************/
@@ -163,20 +162,24 @@ impl<P: NonNullable> MarkedOption<P> {
     pub fn replace(&mut self, value: P) -> Self {
         mem::replace(self, Value(value))
     }
+}
 
+impl<P: MarkedNonNullable> MarkedOption<P> {
+    /// TODO: Docs...
     #[inline]
     pub fn decompose(&self) -> (*mut P::Item, usize) {
         match self {
-            Value(ptr) => (ptr.as_mut_ptr(), ptr.tag()),
+            Value(ptr) => (ptr.decompose_ptr(), ptr.decompose_tag()),
             Null(tag) => (ptr::null_mut(), *tag),
         }
     }
 
+    /// TODO: Docs...
     #[inline]
     pub fn decompose_ptr(&self) -> *mut P::Item {
         match self {
-            Value(ptr) => ptr.as_mut_ptr(),
-            Null(_) => ptr::null_mut()
+            Value(ptr) => ptr.decompose_ptr(),
+            Null(_) => ptr::null_mut(),
         }
     }
 
@@ -184,8 +187,8 @@ impl<P: NonNullable> MarkedOption<P> {
     #[inline]
     pub fn decompose_tag(&self) -> usize {
         match self {
-            Value(ptr) => ptr.tag(),
-            Null(tag) => *tag
+            Value(ptr) => ptr.decompose_tag(),
+            Null(tag) => *tag,
         }
     }
 }
@@ -196,7 +199,9 @@ impl<T, N: Unsigned> From<MarkedPtr<T, N>> for MarkedOption<MarkedNonNull<T, N>>
     #[inline]
     fn from(marked_ptr: MarkedPtr<T, N>) -> Self {
         match marked_ptr.decompose() {
-            (ptr, _) if !ptr.is_null() => Value(unsafe { MarkedNonNull::new_unchecked(marked_ptr) }),
+            (ptr, _) if !ptr.is_null() => {
+                Value(unsafe { MarkedNonNull::new_unchecked(marked_ptr) })
+            }
             (_, tag) => Null(tag),
         }
     }
