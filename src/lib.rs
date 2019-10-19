@@ -1,6 +1,6 @@
-//! Strongly typed marked pointers for storing bit patterns alongside pointers
-//!
-//!
+//! Strongly typed pointers with reserved bits for storing additional bit
+//! patterns within a single pointer-width word.
+
 #![no_std]
 
 #![warn(missing_docs)]
@@ -97,14 +97,6 @@ pub trait NonNullable: Sized {
     /// The referenced or pointed-to type.
     type Item: Sized;
 
-    /// Returns the tag stored in the available free bits.
-    ///
-    /// For unmarked types like `&T` this will always return `0`.
-    #[inline]
-    fn tag(&self) -> usize {
-        0
-    }
-
     /// Returns the value of `self` as a `const` pointer that is guaranteed to
     /// be non-null.
     fn as_const_ptr(&self) -> *const Self::Item;
@@ -184,11 +176,6 @@ impl<'a, T: Sized> NonNullable for &'a mut T {
 
 impl<T, N: Unsigned> NonNullable for MarkedNonNull<T, N> {
     type Item = T;
-
-    #[inline]
-    fn tag(&self) -> usize {
-        self.decompose_tag()
-    }
 
     #[inline]
     fn as_const_ptr(&self) -> *const Self::Item {
