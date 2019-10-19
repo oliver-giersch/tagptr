@@ -64,12 +64,17 @@ pub struct MarkedPtr<T, N> {
 
 /// A non-nullable marked raw pointer type like [`NonNull`].
 ///
-/// Note, that unlike [`MarkedPtr`] and [`NonNull`] this also **excludes**
-/// marked null-pointers, which gives this type some additional invariants:
+/// # Invariants
+///
+/// Unlike [`NonNull`] this type does not permit values that would be `null`
+/// pointers if its first `N` bits are interpreted as tag.
 /// For instance, a pointer value `0x1`, despite not pointing at valid memory,
-/// is still valid for constructing both [`NonNull`] and [`MarkedPtr`] values
-/// for any `N`.
-/// TODO: ...
+/// is still valid for constructing a [`NonNull`] value.
+/// For any `N > 0`, however, this value is not a valid [`MarkedNonNull`], since
+/// it would be interpreted as a `null` pointer with a tag value of `1`.
+/// For regular, well-aligned pointers, this is usually not an issue and the
+/// type enforces at compile-time that no value `N` can be instantiated that
+/// exceeds `T`'s inherent alignment.
 pub struct MarkedNonNull<T, N> {
     inner: NonNull<T>,
     _marker: PhantomData<N>,
@@ -83,6 +88,8 @@ pub struct MarkedNonNull<T, N> {
 ///
 /// This type is similar to [`Option<T>`][Option] but can also express `null`
 /// pointers with mark bits.
+/// Note that unlike [`Option`] this type `enum` can not benefit from
+/// Null-Pointer-Optimization and hence takes up at least *two* memory words.
 #[derive(Clone, Copy, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub enum MarkedOption<T: NonNullable> {
     /// Some reference or non-nullable pointer type
@@ -95,9 +102,9 @@ pub enum MarkedOption<T: NonNullable> {
 // MarkedNonNullable (trait)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/// TODO: Docs...
+/// A trait for non-nullable marked pointer and reference types.
 pub trait MarkedNonNullable: NonNullable {
-    /// TODO: Docs...
+    /// The number of mark bits.
     type MarkBits: Unsigned;
 
     /// TODO: Docs...

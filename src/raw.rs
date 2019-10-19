@@ -371,7 +371,7 @@ impl<T, N> Copy for MarkedNonNull<T, N> {}
 
 impl<T, N> MarkedNonNull<T, N> {
     /// Creates a new [`MarkedNonNull`] from a marked pointer without checking
-    /// for `null`.
+    /// its validity.
     ///
     /// # Safety
     ///
@@ -384,7 +384,8 @@ impl<T, N> MarkedNonNull<T, N> {
         Self { inner: NonNull::new_unchecked(ptr.inner), _marker: PhantomData }
     }
 
-    /// TODO: docs...
+    /// Creates a new [`MarkedNonNull`] from a [`NonNull`] without checking its
+    /// validity.
     #[inline]
     pub const unsafe fn from_non_null_unchecked(non_null: NonNull<T>) -> Self {
         Self { inner: non_null, _marker: PhantomData }
@@ -513,7 +514,7 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
         Self { inner: unsafe { NonNull::new_unchecked(clear) }, _marker: PhantomData }
     }
 
-    /// TODO: Docs...
+    /// Clears the tag from `self` and replaces it with `tag`.
     #[inline]
     pub fn with_tag(self, tag: usize) -> Self {
         Self::compose(self.decompose_non_null(), tag)
