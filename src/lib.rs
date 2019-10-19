@@ -107,6 +107,9 @@ pub trait MarkedNonNullable: NonNullable {
     /// The number of mark bits.
     type MarkBits: Unsigned;
 
+    /// Converts `self` into a raw [`MarkedNonNull].
+    fn into_marked_non_null(self) -> MarkedNonNull<Self::Item, Self::MarkBits>;
+
     /// TODO: Docs...
     fn decompose(&self) -> (NonNull<Self::Item>, usize);
 
@@ -124,6 +127,11 @@ pub trait MarkedNonNullable: NonNullable {
 
 impl<T, N: Unsigned> MarkedNonNullable for MarkedNonNull<T, N> {
     type MarkBits = N;
+
+    #[inline]
+    fn into_marked_non_null(self) -> MarkedNonNull<Self::Item, Self::MarkBits> {
+        self
+    }
 
     #[inline]
     fn decompose(&self) -> (NonNull<Self::Item>, usize) {
