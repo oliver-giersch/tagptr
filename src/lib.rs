@@ -116,16 +116,19 @@ pub trait MarkedNonNullable: NonNullable {
     /// Converts `self` into a raw [`MarkedNonNull].
     fn into_marked_non_null(self) -> MarkedNonNull<Self::Item, Self::MarkBits>;
 
-    /// TODO: Docs...
+    /// Decomposes the [`MarkedNonNullable`], returning the separated raw
+    /// [`NonNull`] pointer and its tag.
     fn decompose(&self) -> (NonNull<Self::Item>, usize);
 
-    /// TODO: Docs...
+    /// Decomposes the [`MarkedNonNullable`], returning only the separated raw
+    /// pointer.
     fn decompose_ptr(&self) -> *mut Self::Item;
 
-    /// TODO: Docs...
+    /// Decomposes the [`MarkedNonNullable`], returning only the separated raw
+    /// [`NonNull`] pointer.
     fn decompose_non_null(&self) -> NonNull<Self::Item>;
 
-    /// TODO: Docs...
+    /// Decomposes the [`MarkedNonNullable`], returning only the separated tag.
     fn decompose_tag(&self) -> usize;
 }
 

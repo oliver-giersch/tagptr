@@ -183,8 +183,8 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
         Self::compose(self.decompose_non_null(), tag)
     }
 
-    /// Decomposes the marked pointer, returning the separated raw [`NonNull`]
-    /// pointer and its tag.
+    /// Decomposes the [`MarkedNonNull`], returning the separated raw
+    /// [`NonNull`] pointer and its tag.
     #[inline]
     pub fn decompose(self) -> (NonNull<T>, usize) {
         (self.decompose_non_null(), self.decompose_tag())

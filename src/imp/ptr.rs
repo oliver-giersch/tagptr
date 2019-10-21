@@ -356,6 +356,11 @@ mod tests {
     type MarkedPtr = crate::MarkedPtr<i32, typenum::U2>;
 
     #[test]
+    fn new() {
+        assert_eq!(MarkedPtr::null(), MarkedPtr::default());
+    }
+
+    #[test]
     fn from_usize() {
         let reference = &1 as *const i32 as usize;
         let ptr = MarkedPtr::from_usize(reference | 0b1);
