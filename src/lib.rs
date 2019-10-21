@@ -10,8 +10,7 @@
 pub mod arch64;
 
 mod atomic;
-mod option;
-mod raw;
+mod imp;
 
 use core::marker::PhantomData;
 use core::mem;
@@ -21,8 +20,6 @@ use core::sync::atomic::AtomicUsize;
 pub use typenum;
 
 use typenum::Unsigned;
-
-pub use crate::raw::NullError;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // AtomicMarkedPtr
@@ -99,6 +96,15 @@ pub enum MarkedOption<T: NonNullable> {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// NullError
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// An error type for fallible conversion from [`MarkedPtr`] to
+/// [`MarkedNonNull`].
+#[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
+pub struct NullError(());
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // MarkedNonNullable (trait)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -123,37 +129,6 @@ pub trait MarkedNonNullable: NonNullable {
     fn decompose_tag(&self) -> usize;
 }
 
-/********** impl for MarkedNonNull<T> *************************************************************/
-
-impl<T, N: Unsigned> MarkedNonNullable for MarkedNonNull<T, N> {
-    type MarkBits = N;
-
-    #[inline]
-    fn into_marked_non_null(self) -> MarkedNonNull<Self::Item, Self::MarkBits> {
-        self
-    }
-
-    #[inline]
-    fn decompose(&self) -> (NonNull<Self::Item>, usize) {
-        MarkedNonNull::decompose(*self)
-    }
-
-    #[inline]
-    fn decompose_ptr(&self) -> *mut Self::Item {
-        MarkedNonNull::decompose_ptr(*self)
-    }
-
-    #[inline]
-    fn decompose_non_null(&self) -> NonNull<Self::Item> {
-        MarkedNonNull::decompose_non_null(*self)
-    }
-
-    #[inline]
-    fn decompose_tag(&self) -> usize {
-        MarkedNonNull::decompose_tag(*self)
-    }
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // NonNullable (trait)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -173,90 +148,6 @@ pub trait NonNullable: Sized {
 
     /// Returns the value of `self` as a [`NonNull`].
     fn as_non_null(&self) -> NonNull<Self::Item>;
-}
-
-/********** impl for NonNull<T> *******************************************************************/
-
-impl<T: Sized> NonNullable for NonNull<T> {
-    type Item = T;
-
-    #[inline]
-    fn as_const_ptr(&self) -> *const Self::Item {
-        self.as_ptr() as *const _
-    }
-
-    #[inline]
-    fn as_mut_ptr(&self) -> *mut Self::Item {
-        self.as_ptr()
-    }
-
-    #[inline]
-    fn as_non_null(&self) -> NonNull<Self::Item> {
-        *self
-    }
-}
-
-/********** impl for &'a T ************************************************************************/
-
-impl<'a, T: Sized> NonNullable for &'a T {
-    type Item = T;
-
-    #[inline]
-    fn as_const_ptr(&self) -> *const Self::Item {
-        *self as *const _
-    }
-
-    #[inline]
-    fn as_mut_ptr(&self) -> *mut Self::Item {
-        *self as *const _ as *mut _
-    }
-
-    #[inline]
-    fn as_non_null(&self) -> NonNull<Self::Item> {
-        NonNull::from(*self)
-    }
-}
-
-/********** impl for &'a mut T ********************************************************************/
-
-impl<'a, T: Sized> NonNullable for &'a mut T {
-    type Item = T;
-
-    #[inline]
-    fn as_const_ptr(&self) -> *const Self::Item {
-        *self as *const _
-    }
-
-    #[inline]
-    fn as_mut_ptr(&self) -> *mut Self::Item {
-        *self as *const _ as *mut _
-    }
-
-    #[inline]
-    fn as_non_null(&self) -> NonNull<Self::Item> {
-        NonNull::from(&**self)
-    }
-}
-
-/********** impl for MarkedNonNull ****************************************************************/
-
-impl<T, N: Unsigned> NonNullable for MarkedNonNull<T, N> {
-    type Item = T;
-
-    #[inline]
-    fn as_const_ptr(&self) -> *const Self::Item {
-        self.decompose_ptr() as *const _
-    }
-
-    #[inline]
-    fn as_mut_ptr(&self) -> *mut Self::Item {
-        self.decompose_ptr()
-    }
-
-    #[inline]
-    fn as_non_null(&self) -> NonNull<Self::Item> {
-        self.decompose_non_null()
-    }
 }
 
 /********** helper functions **********************************************************************/

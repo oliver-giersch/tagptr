@@ -1,3 +1,5 @@
+//! Implementation for the [`MarkedOption`] type.
+
 use core::mem;
 use core::ptr;
 
