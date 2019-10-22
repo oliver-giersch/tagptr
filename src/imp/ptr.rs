@@ -356,11 +356,6 @@ mod tests {
     type MarkedPtr = crate::MarkedPtr<i32, typenum::U2>;
 
     #[test]
-    fn new() {
-        assert_eq!(MarkedPtr::null(), MarkedPtr::default());
-    }
-
-    #[test]
     fn from_usize() {
         let reference = &1 as *const i32 as usize;
         let ptr = MarkedPtr::from_usize(reference | 0b1);
@@ -380,6 +375,44 @@ mod tests {
         assert_eq!(from_ref, from_mut);
         assert_eq!(from_mut, from_const_ptr);
         assert_eq!(from_const_ptr, from_mut_ptr);
+    }
+
+    #[test]
+    fn clear_tag() {
+        let raw = &mut 1 as *mut i32;
+        let ptr = MarkedPtr::compose(raw, 0);
+        assert_eq!(ptr.clear_tag().into_ptr(), raw);
+        assert_eq!(ptr.clear_tag().decompose(), (raw, 0));
+
+        let ptr = MarkedPtr::compose(raw, 0b11);
+        assert_eq!(ptr.clear_tag().into_ptr(), raw);
+        assert_eq!(ptr.clear_tag().decompose(), (raw, 0));
+    }
+
+    #[test]
+    fn with_tag() {
+        let raw = &mut 1 as *mut i32;
+        let unmarked = MarkedPtr::compose(raw, 0);
+        let marked_ptr = MarkedPtr::compose(raw, 0b11);
+
+        assert_eq!(unmarked.with_tag(0b1), MarkedPtr::compose(raw, 0b1));
+        assert_eq!(marked_ptr.with_tag(0b1), MarkedPtr::compose(raw, 0b1));
+        assert_eq!(unmarked.with_tag(0b101), MarkedPtr::compose(raw, 0b1));
+        assert_eq!(marked_ptr.with_tag(0b101), MarkedPtr::compose(raw, 0b1));
+        assert_eq!(unmarked.with_tag(0).into_ptr(), raw);
+        assert_eq!(marked_ptr.with_tag(0).into_ptr(), raw);
+    }
+
+    #[test]
+    fn decompose() {
+        assert_eq!(MarkedPtr::compose(ptr::null_mut(), 0).decompose(), (ptr::null_mut(), 0));
+        assert_eq!(MarkedPtr::compose(ptr::null_mut(), 0b11).decompose(), (ptr::null_mut(), 0b11));
+        assert_eq!(MarkedPtr::compose(ptr::null_mut(), 0b100).decompose(), (ptr::null_mut(), 0));
+
+        let ptr = &mut 0xBEEF as *mut i32;
+        assert_eq!(MarkedPtr::compose(ptr, 0).decompose(), (ptr, 0));
+        assert_eq!(MarkedPtr::compose(ptr, 0b11).decompose(), (ptr, 0b11));
+        assert_eq!(MarkedPtr::compose(ptr, 0b100).decompose(), (ptr, 0));
     }
 
     #[test]
