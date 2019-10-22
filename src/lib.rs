@@ -33,6 +33,7 @@ use typenum::Unsigned;
 /// a [`MarkedPtr`] instead of `*mut T`.
 ///
 /// [atomic]: core::sync::atomic::AtomicPtr
+#[repr(transparent)]
 pub struct AtomicMarkedPtr<T, N> {
     inner: AtomicUsize,
     _marker: PhantomData<(*mut T, N)>,
@@ -50,6 +51,7 @@ pub struct AtomicMarkedPtr<T, N> {
 /// have up to `3` mark bits.
 /// Attempts to use types with insufficient alignment will result in a compile-
 /// time error.
+#[repr(transparent)]
 pub struct MarkedPtr<T, N> {
     inner: *mut T,
     _marker: PhantomData<N>,
@@ -72,6 +74,7 @@ pub struct MarkedPtr<T, N> {
 /// For regular, well-aligned pointers, this is usually not an issue and the
 /// type enforces at compile-time that no value `N` can be instantiated that
 /// exceeds `T`'s inherent alignment.
+#[repr(transparent)]
 pub struct MarkedNonNull<T, N> {
     inner: NonNull<T>,
     _marker: PhantomData<N>,

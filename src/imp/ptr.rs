@@ -260,16 +260,16 @@ impl<T, N> From<*const T> for MarkedPtr<T, N> {
     }
 }
 
-impl<'a, T, N> From<&'a T> for MarkedPtr<T, N> {
+impl<T, N> From<&'_ T> for MarkedPtr<T, N> {
     #[inline]
-    fn from(reference: &'a T) -> Self {
+    fn from(reference: &'_ T) -> Self {
         Self::from(reference as *const _)
     }
 }
 
-impl<'a, T, N> From<&'a mut T> for MarkedPtr<T, N> {
+impl<T, N> From<&'_ mut T> for MarkedPtr<T, N> {
     #[inline]
-    fn from(reference: &'a mut T) -> Self {
+    fn from(reference: &'_ mut T) -> Self {
         Self::new(reference)
     }
 }

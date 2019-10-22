@@ -2,8 +2,10 @@ use core::arch::x86_64::cmpxchg16b;
 use core::cell::UnsafeCell;
 use core::cmp;
 use core::fmt;
+use core::fmt::{Error, Formatter};
+use core::hash::{Hash, Hasher};
 use core::mem;
-use core::ptr;
+use core::ptr::{self, NonNull};
 use core::sync::atomic::Ordering;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -52,6 +54,10 @@ impl<T> AtomicTagPtr<T> {
     /// ordering of this operation.
     /// Possible values are [`SeqCst`][seq_cst], [`Acquire`][acq] and
     /// [`Relaxed`][rlx].
+    ///
+    /// Note, that this function internally calls
+    /// [`compare_and_swap`][AtomicTagPtr::compare_and_swap] exactly once and is
+    /// hence wait-free.
     ///
     /// # Panics
     ///
@@ -104,6 +110,16 @@ impl<T> AtomicTagPtr<T> {
     }
 }
 
+/********** impl Debug ****************************************************************************/
+
+impl<T> fmt::Debug for AtomicTagPtr<T> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let TagPtr(ptr, tag) = self.load(Ordering::SeqCst);
+        f.debug_struct("AtomicTagPtr").field("ptr", &ptr).field("tag", &tag).finish()
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // TagPtr
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -136,6 +152,9 @@ impl<T> Default for TagPtr<T> {
 /*********** impl inherent ************************************************************************/
 
 impl<T> TagPtr<T> {
+    /// The number of available mark bits for this type.
+    pub const MARK_BITS: usize = 64;
+
     /// Creates a new unmarked `null` pointer.
     #[inline]
     pub const fn null() -> Self {
@@ -240,12 +259,58 @@ impl<T> TagPtr<T> {
     }
 }
 
+/*********** impl From ****************************************************************************/
+
+impl<T> From<*const T> for TagPtr<T> {
+    #[inline]
+    fn from(ptr: *const T) -> Self {
+        Self(ptr, 0)
+    }
+}
+
+impl<T> From<*mut T> for TagPtr<T> {
+    #[inline]
+    fn from(ptr: *mut T) -> Self {
+        Self(ptr, 0)
+    }
+}
+
+impl<T> From<&'_ T> for TagPtr<T> {
+    #[inline]
+    fn from(reference: &'_ T) -> Self {
+        Self(reference as *const _ as *mut _, 0)
+    }
+}
+
+impl<T> From<&'_ mut T> for TagPtr<T> {
+    #[inline]
+    fn from(reference: &'_ mut T) -> Self {
+        Self(reference as *mut _, 0)
+    }
+}
+
+impl<T> From<NonNull<T>> for TagPtr<T> {
+    #[inline]
+    fn from(ptr: NonNull<T>) -> Self {
+        Self(ptr.as_ptr(), 0)
+    }
+}
+
 /*********** impl Debug ***************************************************************************/
 
 impl<T> fmt::Debug for TagPtr<T> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TagPtr").field("ptr", &self.0).field("tag", &self.1).finish()
+    }
+}
+
+/*********** impl Pointer *************************************************************************/
+
+impl<T> fmt::Pointer for TagPtr<T> {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        fmt::Pointer::fmt(&self.0, f)
     }
 }
 
@@ -283,6 +348,16 @@ impl<T> Ord for TagPtr<T> {
             cmp::Ordering::Equal => self.1.cmp(&other.1),
             any => any,
         }
+    }
+}
+
+/*********** impl Hash ****************************************************************************/
+
+impl<T> Hash for TagPtr<T> {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+        self.1.hash(state);
     }
 }
 

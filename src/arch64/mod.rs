@@ -8,8 +8,10 @@
 mod dwcas;
 
 use core::cmp;
+use core::fmt;
+use core::hash::{Hash, Hasher};
 use core::marker::PhantomData;
-use core::ptr;
+use core::ptr::{self, NonNull};
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 #[cfg(all(target_arch = "x86_64", feature = "nightly"))]
@@ -306,6 +308,7 @@ impl<T> AtomicMarkedNativePtr<T> {
 
 /// A marked native (64-bit) pointer of which the upper 16 bits can be used for
 /// storing additional information.
+#[repr(transparent)]
 pub struct MarkedNativePtr<T> {
     inner: *mut T,
 }
@@ -502,6 +505,62 @@ impl<T> MarkedNativePtr<T> {
     }
 }
 
+impl<T> From<*mut T> for MarkedNativePtr<T> {
+    #[inline]
+    fn from(ptr: *mut T) -> Self {
+        Self::new(ptr)
+    }
+}
+
+impl<T> From<*const T> for MarkedNativePtr<T> {
+    #[inline]
+    fn from(ptr: *const T) -> Self {
+        Self::new(ptr as *mut _)
+    }
+}
+
+impl<'a, T> From<&'a T> for MarkedNativePtr<T> {
+    #[inline]
+    fn from(reference: &'a T) -> Self {
+        Self::from(reference as *const _)
+    }
+}
+
+impl<'a, T> From<&'a mut T> for MarkedNativePtr<T> {
+    #[inline]
+    fn from(reference: &'a mut T) -> Self {
+        Self::new(reference)
+    }
+}
+
+impl<T> From<NonNull<T>> for MarkedNativePtr<T> {
+    #[inline]
+    fn from(non_null: NonNull<T>) -> Self {
+        Self::new(non_null.as_ptr())
+    }
+}
+
+/********** impl Debug ****************************************************************************/
+
+impl<T> fmt::Debug for MarkedNativePtr<T> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("MarkedPtr")
+            .field("ptr", &self.decompose_ptr())
+            .field("tag", &self.decompose_tag())
+            .finish()
+    }
+}
+
+/********** impl Pointer **************************************************************************/
+
+impl<T> fmt::Pointer for MarkedNativePtr<T> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Pointer::fmt(&self.decompose_ptr(), f)
+    }
+}
+
 /********** impl PartialEq ************************************************************************/
 
 impl<T> PartialEq for MarkedNativePtr<T> {
@@ -530,5 +589,14 @@ impl<T> Ord for MarkedNativePtr<T> {
     #[inline]
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         self.inner.cmp(&other.inner)
+    }
+}
+
+/********** impl Hash *****************************************************************************/
+
+impl<T> Hash for MarkedNativePtr<T> {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.inner.hash(state)
     }
 }
