@@ -40,6 +40,7 @@ impl<T> Default for AtomicTagPtr<T> {
 /********** impl inherent *************************************************************************/
 
 impl<T> AtomicTagPtr<T> {
+    /// A tagged 128-bit `null` pointer, i.e. a `null` pointer with zeroed tag.
     const NULL: TagPtr<T> = TagPtr::null();
 
     /// Creates a new [`AtomicTagPtr`].
@@ -74,6 +75,7 @@ impl<T> AtomicTagPtr<T> {
         self.compare_and_swap(Self::NULL, Self::NULL, order)
     }
 
+    /// TODO: docs...
     #[inline]
     pub fn compare_and_swap(
         &self,
@@ -264,7 +266,7 @@ impl<T> TagPtr<T> {
 impl<T> From<*const T> for TagPtr<T> {
     #[inline]
     fn from(ptr: *const T) -> Self {
-        Self(ptr, 0)
+        Self(ptr as *mut _, 0)
     }
 }
 
@@ -368,9 +370,20 @@ mod tests {
     use super::{AtomicTagPtr, TagPtr};
 
     #[test]
-    fn atomic_load() {
+    fn load() {
         let ptr = &mut 1;
         let atomic = AtomicTagPtr::new(TagPtr(ptr, u64::max_value()));
         assert_eq!(atomic.load(Ordering::SeqCst), TagPtr(ptr, u64::max_value()));
+    }
+
+    #[test]
+    fn compare_and_swap() {
+        let current = TagPtr(&mut 1, 100_000);
+        let new = TagPtr(&mut 2, 100);
+
+        let atomic = AtomicTagPtr::new(current);
+        let prev = atomic.compare_and_swap(current, new, Ordering::Relaxed);
+        assert_eq!(prev, current);
+        assert_eq!(atomic.load(Ordering::Relaxed), new);
     }
 }
