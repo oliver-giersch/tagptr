@@ -566,7 +566,7 @@ impl<T> From<NonNull<T>> for MarkedNativePtr<T> {
 impl<T> fmt::Debug for MarkedNativePtr<T> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("MarkedPtr")
+        f.debug_struct("MarkedNativePtr")
             .field("ptr", &self.decompose_ptr())
             .field("tag", &self.decompose_tag())
             .finish()
