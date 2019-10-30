@@ -162,6 +162,27 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
         Self::compose(self.decompose_ptr(), tag)
     }
 
+    /// Adds `value` to the current tag without regard for the previous value.
+    ///
+    /// This method does not perform any checks, so it may overflow the tag
+    /// bits, result in a pointer to a different value, a null pointer or an
+    //  unaligned pointer.
+    #[inline]
+    pub fn add_tag(self, value: usize) -> Self {
+        Self::from_usize(self.into_usize() + value)
+    }
+
+    /// Subtracts `value` to the current tag without regard for the previous
+    /// value.
+    ///
+    /// This method does not perform any checks, so it may underflow the tag
+    /// bits, result in a pointer to a different value, a null pointer or an
+    /// unaligned pointer.
+    #[inline]
+    pub fn sub_tag(self, value: usize) -> Self {
+        Self::from_usize(self.into_usize() - value)
+    }
+
     /// Decomposes the [`MarkedPtr`], returning the separated raw pointer and
     /// its tag.
     #[inline]
