@@ -152,7 +152,7 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
         if !crate::decompose_ptr::<T>(ptr.as_ptr() as usize, Self::MARK_BITS).is_null() {
             Ok(unsafe { Self::compose_unchecked(ptr, tag) })
         } else {
-            Err(NullError(()))
+            Err(NullError)
         }
     }
 
@@ -458,7 +458,7 @@ impl<T, N: Unsigned> TryFrom<MarkedPtr<T, N>> for MarkedNonNull<T, N> {
     fn try_from(marked_ptr: MarkedPtr<T, N>) -> Result<Self, Self::Error> {
         match MarkedOption::from(marked_ptr) {
             Value(ptr) => Ok(ptr),
-            Null(_) => Err(NullError(())),
+            Null(_) => Err(NullError),
         }
     }
 }
@@ -469,7 +469,7 @@ impl<T, N: Unsigned> TryFrom<NonNull<T>> for MarkedNonNull<T, N> {
     #[inline]
     fn try_from(non_null: NonNull<T>) -> Result<Self, Self::Error> {
         if non_null.as_ptr() as usize & Self::POINTER_MASK == 0 {
-            Err(NullError(()))
+            Err(NullError)
         } else {
             Ok(Self { inner: non_null, _marker: PhantomData })
         }
