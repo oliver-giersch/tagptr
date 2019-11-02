@@ -104,8 +104,8 @@ pub enum MarkedOption<T: NonNullable> {
 
 /// An error type for fallible conversion from [`MarkedPtr`] to
 /// [`MarkedNonNull`].
-#[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
-pub struct NullError(());
+#[derive(Clone, Copy, Debug, Default, Hash, Eq, Ord, PartialEq, PartialOrd)]
+pub struct NullError;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // MarkedNonNullable (trait)
