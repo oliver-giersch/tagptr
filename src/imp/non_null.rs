@@ -121,7 +121,7 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
     /// # Panics
     ///
     /// This function panics, if `ptr` is a actually `null` pointer if its first
-    //    /// `N` bits are interpreted as tag.
+    /// `N` bits are interpreted as tag.
     /// For instance, `0x1` would be a valid value for `NonNull`, even though
     /// de-referencing it would be undefined behaviour.
     /// The same value is not valid for `MarkedNonNull` with `N > 0`, however,
@@ -179,8 +179,30 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
 
     /// Clears the tag from `self` and replaces it with `tag`.
     #[inline]
-    pub fn with_tag(self, tag: usize) -> Self {
+    pub fn set_tag(self, tag: usize) -> Self {
         Self::compose(self.decompose_non_null(), tag)
+    }
+
+    #[inline]
+    pub unsafe fn add_tag(self, value: usize) -> Self {
+        Self::new_unchecked(MarkedPtr::from_usize(self.inner.as_ptr() as usize + value))
+    }
+
+    #[inline]
+    pub fn wrapping_add_tag(self, value: usize) -> Self {
+        let (ptr, tag) = self.decompose();
+        unsafe { Self::compose(ptr, tag + value) }
+    }
+
+    #[inline]
+    pub unsafe fn sub_tag(self, value: usize) -> Self {
+        Self::new_unchecked(MarkedPtr::from_usize(self.inner.as_ptr() as usize - value))
+    }
+
+    #[inline]
+    pub fn wrapping_sub_tag(self, value: usize) -> Self {
+        let (ptr, tag) = self.decompose();
+        unsafe { Self::compose(ptr, tag - value) }
     }
 
     /// Decomposes the [`MarkedNonNull`], returning the separated raw

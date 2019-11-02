@@ -155,10 +155,10 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
     ///
     /// let raw = &1 as *const i32 as *mut i32;
     /// let ptr = MarkedPtr::compose(raw, 0b11);
-    /// assert_eq!(ptr.with_tag(0b10).decompose(), (raw, 0b10));
+    /// assert_eq!(ptr.set_tag(0b10).decompose(), (raw, 0b10));
     /// ```
     #[inline]
-    pub fn with_tag(self, tag: usize) -> Self {
+    pub fn set_tag(self, tag: usize) -> Self {
         Self::compose(self.decompose_ptr(), tag)
     }
 
@@ -166,10 +166,18 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
     ///
     /// This method does not perform any checks, so it may overflow the tag
     /// bits, result in a pointer to a different value, a null pointer or an
-    //  unaligned pointer.
+    /// unaligned pointer.
     #[inline]
     pub fn add_tag(self, value: usize) -> Self {
         Self::from_usize(self.into_usize() + value)
+    }
+
+    /// Adds 'value' to the current tag with wrapping behaviour on overflow of
+    /// the tag bits.
+    #[inline]
+    pub fn wrapping_add_tag(self, value: usize) -> Self {
+        let (ptr, tag) = self.decompose();
+        Self::compose(ptr, tag + value)
     }
 
     /// Subtracts `value` to the current tag without regard for the previous
@@ -181,6 +189,14 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
     #[inline]
     pub fn sub_tag(self, value: usize) -> Self {
         Self::from_usize(self.into_usize() - value)
+    }
+
+    /// Subtracts 'value' from the current tag with wrapping behaviour on
+    /// underflow of the tag bits.
+    #[inline]
+    pub fn wrapping_sub_tag(self, value: usize) -> Self {
+        let (ptr, tag) = self.decompose();
+        Self::compose(ptr, tag - value)
     }
 
     /// Decomposes the [`MarkedPtr`], returning the separated raw pointer and
@@ -416,12 +432,12 @@ mod tests {
         let unmarked = MarkedPtr::compose(raw, 0);
         let marked_ptr = MarkedPtr::compose(raw, 0b11);
 
-        assert_eq!(unmarked.with_tag(0b1), MarkedPtr::compose(raw, 0b1));
-        assert_eq!(marked_ptr.with_tag(0b1), MarkedPtr::compose(raw, 0b1));
-        assert_eq!(unmarked.with_tag(0b101), MarkedPtr::compose(raw, 0b1));
-        assert_eq!(marked_ptr.with_tag(0b101), MarkedPtr::compose(raw, 0b1));
-        assert_eq!(unmarked.with_tag(0).into_ptr(), raw);
-        assert_eq!(marked_ptr.with_tag(0).into_ptr(), raw);
+        assert_eq!(unmarked.set_tag(0b1), MarkedPtr::compose(raw, 0b1));
+        assert_eq!(marked_ptr.set_tag(0b1), MarkedPtr::compose(raw, 0b1));
+        assert_eq!(unmarked.set_tag(0b101), MarkedPtr::compose(raw, 0b1));
+        assert_eq!(marked_ptr.set_tag(0b101), MarkedPtr::compose(raw, 0b1));
+        assert_eq!(unmarked.set_tag(0).into_ptr(), raw);
+        assert_eq!(marked_ptr.set_tag(0).into_ptr(), raw);
     }
 
     #[test]
