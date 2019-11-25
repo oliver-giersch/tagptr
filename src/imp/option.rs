@@ -1,5 +1,6 @@
 //! Implementation for the [`MarkedOption`] type.
 
+use core::fmt;
 use core::mem;
 use core::ptr;
 
@@ -10,15 +11,7 @@ use crate::{
     MarkedOption::{self, Null, Value},
     MarkedPtr, NonNullable,
 };
-
-/********** impl Default **************************************************************************/
-
-impl<T: NonNullable> Default for MarkedOption<T> {
-    #[inline]
-    fn default() -> Self {
-        Null(0)
-    }
-}
+use core::fmt::{Formatter, Error};
 
 /********** impl inherent *************************************************************************/
 
@@ -192,6 +185,27 @@ impl<P: MarkedNonNullable> MarkedOption<P> {
             Value(ptr) => ptr.decompose_tag(),
             Null(tag) => *tag,
         }
+    }
+}
+
+/********** impl Debug ****************************************************************************/
+
+impl<T: NonNullable + fmt::Debug> fmt::Debug for MarkedOption<T> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Value(ptr) => write!("Value({:?})", ptr),
+            Null(tag) => write!("Null({})", *tag),
+        }
+    }
+}
+
+/********** impl Default **************************************************************************/
+
+impl<T: NonNullable> Default for MarkedOption<T> {
+    #[inline]
+    fn default() -> Self {
+        Null(0)
     }
 }
 
