@@ -194,8 +194,8 @@ impl<T: NonNullable + fmt::Debug> fmt::Debug for MarkedOption<T> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Value(ptr) => write!("Value({:?})", ptr),
-            Null(tag) => write!("Null({})", *tag),
+            Value(ptr) => write!(f, "Value({:?})", ptr),
+            Null(tag) => write!(f, "Null({})", *tag),
         }
     }
 }
