@@ -6,7 +6,7 @@ use core::fmt::{Error, Formatter};
 use core::hash::{Hash, Hasher};
 use core::mem;
 use core::ptr::{self, NonNull};
-use core::sync::atomic::Ordering;
+use core::sync::atomic::{AtomicU64, AtomicPtr, Ordering};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // AtomicMarkedWidePtr
@@ -18,9 +18,10 @@ use core::sync::atomic::Ordering;
 /// concurrent mutation.
 /// The tag value is usually used to prevent the **ABA Problem** with CAS
 /// operations.
-#[repr(align(16))]
+#[repr(C, align(16))]
 pub struct AtomicTagPtr<T> {
-    inner: UnsafeCell<TagPtr<T>>,
+    ptr: AtomicPtr<T>,
+    tag: AtomicU64,
 }
 
 /********** impl Send + Sync **********************************************************************/
@@ -46,7 +47,20 @@ impl<T> AtomicTagPtr<T> {
     /// Creates a new [`AtomicTagPtr`].
     #[inline]
     pub const fn new(ptr: TagPtr<T>) -> Self {
-        Self { inner: UnsafeCell::new(ptr) }
+        Self {
+            ptr: AtomicPtr::new(ptr.ptr()),
+            tag: AtomicU64::new(ptr.tag())
+        }
+    }
+
+    #[inline]
+    pub fn ptr(&self) -> &AtomicPtr<T> {
+        &self.ptr
+    }
+
+    #[inline]
+    pub fn tag(&self) -> &AtomicU64 {
+        &self.tag
     }
 
     /// Loads the value of the [`AtomicTagPtr`].
@@ -98,7 +112,7 @@ impl<T> AtomicTagPtr<T> {
         failure: Ordering,
     ) -> Result<TagPtr<T>, TagPtr<T>> {
         unsafe {
-            let dest = self.inner.get().cast();
+            let dest = (&self.ptr as *const _ as *mut AtomicPtr<T>).cast();
             let curr_u128 = mem::transmute(current);
             let new_u128 = mem::transmute(new);
             let res = cmpxchg16b(dest, curr_u128, new_u128, success, failure);
@@ -128,6 +142,7 @@ impl<T> fmt::Debug for AtomicTagPtr<T> {
 
 /// A double-world tuple consisting of a raw pointer and an associated 64-bit
 /// tag value.
+#[repr(C)]
 pub struct TagPtr<T>(pub *mut T, pub u64);
 
 /*********** impl Clone ***************************************************************************/
