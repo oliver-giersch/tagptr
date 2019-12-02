@@ -177,6 +177,13 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
         Self { inner: unsafe { NonNull::new_unchecked(clear) }, _marker: PhantomData }
     }
 
+    /// TODO: docs..
+    #[inline]
+    pub fn split_tag(self) -> (Self, usize) {
+        let (inner, tag) = self.decompose();
+        (Self { inner, _marker: PhantomData }, tag)
+    }
+
     /// Clears the tag from `self` and replaces it with `tag`.
     #[inline]
     pub fn set_tag(self, tag: usize) -> Self {

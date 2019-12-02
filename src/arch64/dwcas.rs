@@ -112,7 +112,7 @@ impl<T> AtomicTagPtr<T> {
         failure: Ordering,
     ) -> Result<TagPtr<T>, TagPtr<T>> {
         unsafe {
-            let dest = (&self.ptr as *const _ as *mut AtomicPtr<T>).cast();
+            let dest = &self.ptr as *const _ as *mut u128;
             let curr_u128 = mem::transmute(current);
             let new_u128 = mem::transmute(new);
             let res = cmpxchg16b(dest, curr_u128, new_u128, success, failure);

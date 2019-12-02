@@ -163,7 +163,7 @@ impl<P: MarkedNonNullable> MaybeNull<P> {
     #[inline]
     pub fn as_marked_ptr(&self) -> MarkedPtr<P::Item, P::MarkBits> {
         match self {
-            NotNull(ptr) => MarkedNonNullable::as_marked_ptr(ptr),
+            NotNull(ptr) => P::as_marked_ptr(ptr),
             Null(tag) => MarkedPtr::compose(ptr::null_mut(), *tag)
         }
     }
@@ -174,6 +174,36 @@ impl<P: MarkedNonNullable> MaybeNull<P> {
         match self {
             NotNull(ptr) => P::into_marked_ptr(ptr),
             Null(tag) => MarkedPtr::compose(ptr::null_mut(), tag),
+        }
+    }
+
+    /// TODO: Docs...
+    #[inline]
+    pub fn clear_tag(self) -> Self {
+        match self {
+            NotNull(ptr) => NotNull(P::clear_tag(ptr)),
+            Null(_) => Null(0)
+        }
+    }
+
+    /// TODO: Docs...
+    #[inline]
+    pub fn split_tag(self) -> (Self, usize) {
+        match self {
+            NotNull(ptr) => {
+                let (ptr, tag) = P::split_tag(ptr);
+                (NotNull(ptr), tag)
+            }
+            Null(tag) => (Null(0), tag)
+        }
+    }
+
+    /// TODO: Docs...
+    #[inline]
+    pub fn set_tag(self, tag: usize) -> Self {
+        match self {
+            NotNull(ptr) => NotNull(P::set_tag(ptr, tag)),
+            Null(_) => Null(tag),
         }
     }
 
@@ -205,32 +235,6 @@ impl<P: MarkedNonNullable> MaybeNull<P> {
             NotNull(ptr) => ptr.decompose_tag(),
             Null(tag) => *tag,
         }
-    }
-
-    #[inline]
-    pub unsafe fn decompose_ref(&self) -> (Option<&P::Item>, usize) {
-        match self.decompose() {
-            (Some(ptr), tag) => (Some(P::as_marked_non_null(ptr).as_ref()), tag),
-            null => null
-        }
-    }
-
-    #[inline]
-    pub unsafe fn decompose_mut(&mut self) -> (Option<&mut P::Item>, usize) {
-        match self.decompose() {
-            (Some(ptr), tag) => (Some(P::as_marked_non_null(ptr).as_mut()), tag),
-            null => null
-        }
-    }
-
-    #[inline]
-    pub unsafe fn deref(&self) -> Option<&P::Item> {
-        unimplemented!()
-    }
-
-    #[inline]
-    pub unsafe fn deref_mut(&mut self) -> Option<&mut P::Item> {
-        unimplemented!()
     }
 }
 
