@@ -9,7 +9,7 @@ use typenum::Unsigned;
 
 use crate::{
     MarkedNonNull, MarkedNonNullable,
-    MarkedOption::{self, Null, Value},
+    MaybeNull::{self, Null, NotNull},
     MarkedPtr, NonNullable, NullError,
 };
 
@@ -378,28 +378,54 @@ impl<T, N: Unsigned> MarkedNonNullable for MarkedNonNull<T, N> {
     type MarkBits = N;
 
     #[inline]
-    fn into_marked_non_null(self) -> MarkedNonNull<Self::Item, Self::MarkBits> {
-        self
+    fn as_marked_ptr(arg: &Self) -> MarkedPtr<Self::Item, Self::MarkBits> {
+        arg.into_marked_ptr()
     }
 
     #[inline]
-    fn decompose(&self) -> (NonNull<Self::Item>, usize) {
-        MarkedNonNull::decompose(*self)
+    fn into_marked_ptr(arg: Self) -> MarkedPtr<Self::Item, Self::MarkBits> {
+        arg.into_marked_ptr()
     }
 
     #[inline]
-    fn decompose_ptr(&self) -> *mut Self::Item {
-        MarkedNonNull::decompose_ptr(*self)
+    fn as_marked_non_null(arg: &Self) -> MarkedNonNull<Self::Item, Self::MarkBits> {
+        *arg
     }
 
     #[inline]
-    fn decompose_non_null(&self) -> NonNull<Self::Item> {
-        MarkedNonNull::decompose_non_null(*self)
+    fn into_marked_non_null(arg: Self) -> MarkedNonNull<Self::Item, Self::MarkBits> {
+        arg
     }
 
     #[inline]
-    fn decompose_tag(&self) -> usize {
-        MarkedNonNull::decompose_tag(*self)
+    fn clear_tag(arg: Self) -> Self {
+        arg.clear_tag()
+    }
+
+    #[inline]
+    fn set_tag(arg: Self, tag: usize) -> Self {
+        arg.set_tag(tag)
+    }
+
+    #[inline]
+    fn decompose(arg: Self) -> (Self, usize) {
+        let tag = arg.decompose_tag();
+        (arg.clear_tag(), tag)
+    }
+
+    #[inline]
+    fn decompose_ptr(arg: &Self) -> *mut Self::Item {
+        arg.decompose_ptr()
+    }
+
+    #[inline]
+    fn decompose_non_null(arg: &Self) -> NonNull<Self::Item> {
+        arg.decompose_non_null()
+    }
+
+    #[inline]
+    fn decompose_tag(arg: &Self) -> usize {
+        arg.decompose_tag()
     }
 }
 
@@ -409,18 +435,18 @@ impl<T, N: Unsigned> NonNullable for MarkedNonNull<T, N> {
     type Item = T;
 
     #[inline]
-    fn as_const_ptr(&self) -> *const Self::Item {
-        self.decompose_ptr() as *const _
+    fn as_const_ptr(arg: &Self) -> *const Self::Item {
+        arg.decompose_ptr() as *const _
     }
 
     #[inline]
-    fn as_mut_ptr(&self) -> *mut Self::Item {
-        self.decompose_ptr()
+    fn as_mut_ptr(arg: &Self) -> *mut Self::Item {
+        arg.decompose_ptr()
     }
 
     #[inline]
-    fn as_non_null(&self) -> NonNull<Self::Item> {
-        self.decompose_non_null()
+    fn as_non_null(arg: &Self) -> NonNull<Self::Item> {
+        arg.decompose_non_null()
     }
 }
 
@@ -456,8 +482,8 @@ impl<T, N: Unsigned> TryFrom<MarkedPtr<T, N>> for MarkedNonNull<T, N> {
 
     #[inline]
     fn try_from(marked_ptr: MarkedPtr<T, N>) -> Result<Self, Self::Error> {
-        match MarkedOption::from(marked_ptr) {
-            Value(ptr) => Ok(ptr),
+        match MaybeNull::from(marked_ptr) {
+            NotNull(ptr) => Ok(ptr),
             Null(_) => Err(NullError),
         }
     }

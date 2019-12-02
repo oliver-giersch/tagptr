@@ -11,6 +11,7 @@ pub mod arch64;
 
 mod atomic;
 mod imp;
+mod traits;
 
 use core::marker::PhantomData;
 use core::mem;
@@ -91,9 +92,9 @@ pub struct MarkedNonNull<T, N> {
 /// Note that unlike [`Option`] this type `enum` can not benefit from
 /// Null-Pointer-Optimization and hence takes up at least *two* memory words.
 #[derive(Clone, Copy, Hash, Eq, Ord, PartialEq, PartialOrd)]
-pub enum MarkedOption<T: NonNullable> {
-    /// Some reference or non-nullable pointer type
-    Value(T),
+pub enum MaybeNull<P: NonNullable> {
+    /// Some reference or non-nullable pointer
+    NotNull(P),
     /// Null pointer, potentially marked
     Null(usize),
 }
@@ -112,27 +113,44 @@ pub struct NullError;
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// A trait for non-nullable marked pointer and reference types.
+#[allow(clippy::wrong_self_convention)]
 pub trait MarkedNonNullable: NonNullable {
     /// The number of mark bits.
     type MarkBits: Unsigned;
 
-    /// Converts `self` into a raw [`MarkedNonNull].
-    fn into_marked_non_null(self) -> MarkedNonNull<Self::Item, Self::MarkBits>;
+    /// Converts `arg` to a raw [`MarkedPtr`].
+    fn as_marked_ptr(arg: &Self) -> MarkedPtr<Self::Item, Self::MarkBits>;
 
-    /// Decomposes the [`MarkedNonNullable`], returning the separated raw
-    /// [`NonNull`] pointer and its tag.
-    fn decompose(&self) -> (NonNull<Self::Item>, usize);
+    /// Converts `arg` to a raw [`MarkedPtr`].
+    fn into_marked_ptr(arg: Self) -> MarkedPtr<Self::Item, Self::MarkBits>;
 
-    /// Decomposes the [`MarkedNonNullable`], returning only the separated raw
-    /// pointer.
-    fn decompose_ptr(&self) -> *mut Self::Item;
+    /// Converts `arg` into a raw [`MarkedNonNull].
+    fn as_marked_non_null(arg: &Self) -> MarkedNonNull<Self::Item, Self::MarkBits>;
 
-    /// Decomposes the [`MarkedNonNullable`], returning only the separated raw
-    /// [`NonNull`] pointer.
-    fn decompose_non_null(&self) -> NonNull<Self::Item>;
+    /// Converts `arg` into a raw [`MarkedNonNull].
+    fn into_marked_non_null(arg: Self) -> MarkedNonNull<Self::Item, Self::MarkBits>;
 
-    /// Decomposes the [`MarkedNonNullable`], returning only the separated tag.
-    fn decompose_tag(&self) -> usize;
+    /// Returns `arg` with its tag cleared.
+    fn clear_tag(arg: Self) -> Self;
+
+    /// TODO: docs...
+    fn split_tag(arg: Self) -> (Self, usize);
+
+    /// Returns `arg` with its tag set to `tag`.
+    fn set_tag(arg: Self, tag: usize) -> Self;
+
+    /// TODO: docs...
+    fn decompose(arg: &Self) -> (NonNull<Self::Item>, usize);
+
+    /// Decomposes the `arg`, returning the separated raw pointer.
+    fn decompose_ptr(arg: &Self) -> *mut Self::Item;
+
+    /// Decomposes the `arg`, returning the separated [`NonNull`]
+    /// pointer and its tag.
+    fn decompose_non_null(arg: &Self) -> NonNull<Self::Item>;
+
+    /// Decomposes the `arg`, returning the separated tag value.
+    fn decompose_tag(arg: &Self) -> usize;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -144,16 +162,16 @@ pub trait NonNullable: Sized {
     /// The referenced or pointed-to type.
     type Item: Sized;
 
-    /// Returns the value of `self` as a `const` pointer that is guaranteed to
-    /// be non-null.
-    fn as_const_ptr(&self) -> *const Self::Item;
+    /// Returns the value of `ptr` as a `const` pointer that is guaranteed
+    /// to be non-null.
+    fn as_const_ptr(ptr: &Self) -> *const Self::Item;
 
-    /// Returns the value of `self` as a `mut` pointer that is guaranteed to
+    /// Returns the value of `ptr` as a `mut` pointer that is guaranteed to
     /// be non-null.
-    fn as_mut_ptr(&self) -> *mut Self::Item;
+    fn as_mut_ptr(ptr: &Self) -> *mut Self::Item;
 
-    /// Returns the value of `self` as a [`NonNull`].
-    fn as_non_null(&self) -> NonNull<Self::Item>;
+    /// Returns the value of `ptr` as a [`NonNull`].
+    fn as_non_null(ptr: &Self) -> NonNull<Self::Item>;
 }
 
 /********** helper functions **********************************************************************/

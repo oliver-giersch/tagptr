@@ -2,7 +2,7 @@
 //! `MarkedOption` types.
 
 mod non_null;
-mod option;
+mod maybe;
 mod ptr;
 
 use core::ptr::NonNull;
@@ -15,18 +15,18 @@ impl<T: Sized> NonNullable for NonNull<T> {
     type Item = T;
 
     #[inline]
-    fn as_const_ptr(&self) -> *const Self::Item {
-        self.as_ptr() as *const _
+    fn as_const_ptr(arg: &Self) -> *const Self::Item {
+        arg.as_ptr() as *const _
     }
 
     #[inline]
-    fn as_mut_ptr(&self) -> *mut Self::Item {
-        self.as_ptr()
+    fn as_mut_ptr(arg: &Self) -> *mut Self::Item {
+        arg.as_ptr()
     }
 
     #[inline]
-    fn as_non_null(&self) -> NonNull<Self::Item> {
-        *self
+    fn as_non_null(arg: &Self) -> NonNull<Self::Item> {
+        *arg
     }
 }
 
@@ -34,18 +34,18 @@ impl<'a, T: Sized> NonNullable for &'a T {
     type Item = T;
 
     #[inline]
-    fn as_const_ptr(&self) -> *const Self::Item {
-        *self as *const _
+    fn as_const_ptr(arg: &Self) -> *const Self::Item {
+        *arg as *const _
     }
 
     #[inline]
-    fn as_mut_ptr(&self) -> *mut Self::Item {
-        *self as *const _ as *mut _
+    fn as_mut_ptr(arg: &Self) -> *mut Self::Item {
+        *arg as *const _ as *mut _
     }
 
     #[inline]
-    fn as_non_null(&self) -> NonNull<Self::Item> {
-        NonNull::from(*self)
+    fn as_non_null(arg: &Self) -> NonNull<Self::Item> {
+        NonNull::from(*arg)
     }
 }
 
@@ -53,17 +53,17 @@ impl<'a, T: Sized> NonNullable for &'a mut T {
     type Item = T;
 
     #[inline]
-    fn as_const_ptr(&self) -> *const Self::Item {
-        *self as *const _
+    fn as_const_ptr(arg: &Self) -> *const Self::Item {
+        *arg as *const _
     }
 
     #[inline]
-    fn as_mut_ptr(&self) -> *mut Self::Item {
-        *self as *const _ as *mut _
+    fn as_mut_ptr(arg: &Self) -> *mut Self::Item {
+        *arg as *const _ as *mut _
     }
 
     #[inline]
-    fn as_non_null(&self) -> NonNull<Self::Item> {
-        NonNull::from(&**self)
+    fn as_non_null(arg: &Self) -> NonNull<Self::Item> {
+        NonNull::from(&**arg)
     }
 }

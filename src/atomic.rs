@@ -402,8 +402,10 @@ impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
     /// Performs a bitwise `or` operation on the current tag and the argument
     /// `value` and sets the new value to the result.
     ///
-    /// Returns the [`MarkedPtr`] with the previous tag, the pointer itself can not change.
-    /// It `value` is larger than the mask of markable bits of this type it is silently truncated.
+    /// Returns the [`MarkedPtr`] with the previous tag, the pointer itself can
+    /// not change.
+    /// It `value` is larger than the mask of markable bits of this type it is
+    /// silently truncated.
     ///
     /// `fetch_or` takes an [`Ordering`] argument, which describes the memory
     /// ordering of this operation.
@@ -427,11 +429,13 @@ impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
 
     /// Bitwise `xor` with the current tag value.
     ///
-    /// Performs a bitwise `xor` operation on the current tag and the argument `value` and sets the
-    /// new value to the result.
+    /// Performs a bitwise `xor` operation on the current tag and the argument
+    /// `value` and sets the new value to the result.
     ///
-    /// Returns the [`MarkedPtr`] with the previous tag, the pointer itself can not change.
-    /// It `value` is larger than the mask of markable bits of this type it is silently truncated.
+    /// Returns the [`MarkedPtr`] with the previous tag, the pointer itself can
+    /// not change.
+    /// It `value` is larger than the mask of markable bits of this type it is
+    /// silently truncated.
     ///
     /// `fetch_xor` takes an [`Ordering`] argument, which describes the memory
     /// ordering of this operation.
