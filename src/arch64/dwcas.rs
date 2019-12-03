@@ -1,12 +1,11 @@
 use core::arch::x86_64::cmpxchg16b;
-use core::cell::UnsafeCell;
 use core::cmp;
 use core::fmt;
 use core::fmt::{Error, Formatter};
 use core::hash::{Hash, Hasher};
 use core::mem;
 use core::ptr::{self, NonNull};
-use core::sync::atomic::{AtomicU64, AtomicPtr, Ordering};
+use core::sync::atomic::{AtomicPtr, AtomicU64, Ordering};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // AtomicMarkedWidePtr
@@ -47,17 +46,18 @@ impl<T> AtomicTagPtr<T> {
     /// Creates a new [`AtomicTagPtr`].
     #[inline]
     pub const fn new(ptr: TagPtr<T>) -> Self {
-        Self {
-            ptr: AtomicPtr::new(ptr.ptr()),
-            tag: AtomicU64::new(ptr.tag())
-        }
+        Self { ptr: AtomicPtr::new(ptr.ptr()), tag: AtomicU64::new(ptr.tag()) }
     }
 
+    /// Returns a reference to the [`AtomicPtr`] constituting the first half
+    /// of the [`AtomicTagPtr`].
     #[inline]
     pub fn ptr(&self) -> &AtomicPtr<T> {
         &self.ptr
     }
 
+    /// Returns a reference to the [`AtomicU64`] constituting the second half
+    /// of the [`AtomicTagPtr`].
     #[inline]
     pub fn tag(&self) -> &AtomicU64 {
         &self.tag
@@ -89,7 +89,6 @@ impl<T> AtomicTagPtr<T> {
         self.compare_and_swap(Self::NULL, Self::NULL, order)
     }
 
-    /// TODO: docs...
     #[inline]
     pub fn compare_and_swap(
         &self,

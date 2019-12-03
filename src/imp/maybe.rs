@@ -11,7 +11,6 @@ use crate::{
     MarkedNonNull, MarkedPtr,
     MaybeNull::{self, NotNull, Null},
 };
-use core::fmt::{Error, Formatter};
 
 /********** impl inherent *************************************************************************/
 
@@ -159,7 +158,6 @@ impl<P: NonNullable> MaybeNull<P> {
 }
 
 impl<P: MarkedNonNullable> MaybeNull<P> {
-    /// TODO: Docs...
     #[inline]
     pub fn as_marked_ptr(&self) -> MarkedPtr<P::Item, P::MarkBits> {
         match self {
@@ -168,7 +166,6 @@ impl<P: MarkedNonNullable> MaybeNull<P> {
         }
     }
 
-    /// TODO: Docs...
     #[inline]
     pub fn into_marked_ptr(self) -> MarkedPtr<P::Item, P::MarkBits> {
         match self {
@@ -177,7 +174,6 @@ impl<P: MarkedNonNullable> MaybeNull<P> {
         }
     }
 
-    /// TODO: Docs...
     #[inline]
     pub fn clear_tag(self) -> Self {
         match self {
@@ -186,7 +182,6 @@ impl<P: MarkedNonNullable> MaybeNull<P> {
         }
     }
 
-    /// TODO: Docs...
     #[inline]
     pub fn split_tag(self) -> (Self, usize) {
         match self {
@@ -198,7 +193,6 @@ impl<P: MarkedNonNullable> MaybeNull<P> {
         }
     }
 
-    /// TODO: Docs...
     #[inline]
     pub fn set_tag(self, tag: usize) -> Self {
         match self {
@@ -207,23 +201,21 @@ impl<P: MarkedNonNullable> MaybeNull<P> {
         }
     }
 
-    /// TODO: Docs...
     #[inline]
     pub fn decompose(self) -> (Option<P>, usize) {
         match self {
             NotNull(ptr) => {
-                let (ptr, tag) = P::decompose(ptr);
+                let (ptr, tag) = P::split_tag(ptr);
                 (Some(ptr), tag)
             }
-            Null(tag) => (None, *tag),
+            Null(tag) => (None, tag),
         }
     }
 
-    /// TODO: Docs...
     #[inline]
     pub fn decompose_ptr(&self) -> *mut P::Item {
         match self {
-            NotNull(ptr) => ptr.decompose_ptr(),
+            NotNull(ptr) => P::decompose_ptr(ptr),
             Null(_) => ptr::null_mut(),
         }
     }
@@ -232,7 +224,7 @@ impl<P: MarkedNonNullable> MaybeNull<P> {
     #[inline]
     pub fn decompose_tag(&self) -> usize {
         match self {
-            NotNull(ptr) => ptr.decompose_tag(),
+            NotNull(ptr) => P::decompose_tag(ptr),
             Null(tag) => *tag,
         }
     }

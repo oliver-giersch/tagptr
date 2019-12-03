@@ -1,13 +1,13 @@
 //! Inherent and trait implementations for `MarkedNonNull`, `MarkedPtr`,
 //! `MarkedOption` types.
 
-mod non_null;
 mod maybe;
+mod non_null;
 mod ptr;
 
 use core::ptr::NonNull;
 
-use crate::NonNullable;
+use crate::traits::NonNullable;
 
 /********** impl NonNullable **********************************************************************/
 

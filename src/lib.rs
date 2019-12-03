@@ -20,7 +20,7 @@ use core::sync::atomic::AtomicUsize;
 
 pub use typenum;
 
-use typenum::Unsigned;
+use crate::traits::NonNullable;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // AtomicMarkedPtr

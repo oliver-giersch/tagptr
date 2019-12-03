@@ -144,7 +144,6 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
         Self::new(self.decompose_ptr())
     }
 
-    /// TODO: docs...
     #[inline]
     pub fn split_tag(self) -> (Self, usize) {
         let (ptr, tag) = self.decompose();

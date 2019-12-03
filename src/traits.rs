@@ -2,7 +2,7 @@ use core::ptr::NonNull;
 
 use typenum::Unsigned;
 
-use crate::{MarkedNonNull, MarkedPtr};
+use crate::MarkedPtr;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // NonNullable (trait)
@@ -34,31 +34,32 @@ pub trait MarkedNonNullable: NonNullable {
     /// The number of mark bits.
     type MarkBits: Unsigned;
 
-    /// TODO: docs...
+    /// Converts `ptr` into a [`MarkedPtr`] without consuming it.
     fn as_marked_ptr(ptr: &Self) -> MarkedPtr<Self::Item, Self::MarkBits>;
 
-    /// TODO: docs...
+    /// Converts `ptr` into a [`MarkedPtr`] and consumes it.
     fn into_marked_ptr(ptr: Self) -> MarkedPtr<Self::Item, Self::MarkBits>;
 
     /// Clears (zeroes) `ptr`'s tag and returns the same pointer..
     fn clear_tag(ptr: Self) -> Self;
 
-    ///
+    /// Splits the tag from `ptr` and returns the unmarked pointer and the
+    /// previous tag.
     fn split_tag(ptr: Self) -> (Self, usize);
 
-    /// Returns `arg` with its tag set to `tag`.
+    /// Sets the tag of `ptr` to `tag` and returns the marked value.
     fn set_tag(ptr: Self, tag: usize) -> Self;
 
-    /// TODO: docs...
+    /// Decomposes `ptr` and returns the separated raw [`NonNull`] and its tag
+    /// value.
     fn decompose(ptr: &Self) -> (NonNull<Self::Item>, usize);
 
-    /// Decomposes the `arg`, returning the separated raw pointer.
+    /// Decomposes `ptr` and returns the separated raw pointer.
     fn decompose_ptr(ptr: &Self) -> *mut Self::Item;
 
-    /// Decomposes the `arg`, returning the separated [`NonNull`]
-    /// pointer and its tag.
+    /// Decomposes `ptr` and returns the separated raw [`NonNull`].
     fn decompose_non_null(ptr: &Self) -> NonNull<Self::Item>;
 
-    /// Decomposes the `arg`, returning the separated tag value.
+    /// Decomposes `ptr` and returns the separated tag value.
     fn decompose_tag(ptr: &Self) -> usize;
 }
