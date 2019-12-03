@@ -7,10 +7,11 @@ use core::ptr::NonNull;
 
 use typenum::Unsigned;
 
+use crate::traits::{MarkedNonNullable, NonNullable};
 use crate::{
-    MarkedNonNull, MarkedNonNullable,
-    MaybeNull::{self, Null, NotNull},
-    MarkedPtr, NonNullable, NullError,
+    MarkedNonNull, MarkedPtr,
+    MaybeNull::{self, NotNull, Null},
+    NullError,
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

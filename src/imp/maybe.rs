@@ -6,12 +6,12 @@ use core::ptr;
 
 use typenum::Unsigned;
 
+use crate::traits::{MarkedNonNullable, NonNullable};
 use crate::{
-    MarkedNonNull, MarkedNonNullable,
-    MaybeNull::{self, Null, NotNull},
-    MarkedPtr, NonNullable,
+    MarkedNonNull, MarkedPtr,
+    MaybeNull::{self, NotNull, Null},
 };
-use core::fmt::{Formatter, Error};
+use core::fmt::{Error, Formatter};
 
 /********** impl inherent *************************************************************************/
 
@@ -164,7 +164,7 @@ impl<P: MarkedNonNullable> MaybeNull<P> {
     pub fn as_marked_ptr(&self) -> MarkedPtr<P::Item, P::MarkBits> {
         match self {
             NotNull(ptr) => P::as_marked_ptr(ptr),
-            Null(tag) => MarkedPtr::compose(ptr::null_mut(), *tag)
+            Null(tag) => MarkedPtr::compose(ptr::null_mut(), *tag),
         }
     }
 
@@ -182,7 +182,7 @@ impl<P: MarkedNonNullable> MaybeNull<P> {
     pub fn clear_tag(self) -> Self {
         match self {
             NotNull(ptr) => NotNull(P::clear_tag(ptr)),
-            Null(_) => Null(0)
+            Null(_) => Null(0),
         }
     }
 
@@ -194,7 +194,7 @@ impl<P: MarkedNonNullable> MaybeNull<P> {
                 let (ptr, tag) = P::split_tag(ptr);
                 (NotNull(ptr), tag)
             }
-            Null(tag) => (Null(0), tag)
+            Null(tag) => (Null(0), tag),
         }
     }
 
@@ -215,7 +215,7 @@ impl<P: MarkedNonNullable> MaybeNull<P> {
                 let (ptr, tag) = P::decompose(ptr);
                 (Some(ptr), tag)
             }
-            Null(tag) => (None, *tag)
+            Null(tag) => (None, *tag),
         }
     }
 
