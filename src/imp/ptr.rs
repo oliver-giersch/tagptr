@@ -168,6 +168,24 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
         Self::compose(self.decompose_ptr(), tag)
     }
 
+    /// Updates the tag of `self` with `func` and returns the pointer with the
+    /// updated tag.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, conquer_pointer::typenum::U0>;
+    ///
+    /// let ptr = MarkedPtr::compose(&mut 1, 0b11);
+    /// let ptr = ptr.update_tag(|tag| tag - 1);
+    /// assert_eq!(ptr.decompose_ptr(), 0b10);
+    /// ```
+    #[inline]
+    pub fn update_tag(self, func: impl FnOnce(usize) -> usize) -> Self {
+        let (ptr, tag) = self.decompose();
+        Self::compose(ptr, func(tag))
+    }
+
     /// Adds `value` to the current tag without regard for the previous value.
     ///
     /// This method does not perform any checks, so it may overflow the tag
@@ -176,14 +194,6 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
     #[inline]
     pub fn add_tag(self, value: usize) -> Self {
         Self::from_usize(self.into_usize() + value)
-    }
-
-    /// Adds 'value' to the current tag with wrapping behaviour on overflow of
-    /// the tag bits.
-    #[inline]
-    pub fn wrapping_add_tag(self, value: usize) -> Self {
-        let (ptr, tag) = self.decompose();
-        Self::compose(ptr, tag + value)
     }
 
     /// Subtracts `value` to the current tag without regard for the previous
@@ -195,14 +205,6 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
     #[inline]
     pub fn sub_tag(self, value: usize) -> Self {
         Self::from_usize(self.into_usize() - value)
-    }
-
-    /// Subtracts 'value' from the current tag with wrapping behaviour on
-    /// underflow of the tag bits.
-    #[inline]
-    pub fn wrapping_sub_tag(self, value: usize) -> Self {
-        let (ptr, tag) = self.decompose();
-        Self::compose(ptr, tag - value)
     }
 
     /// Decomposes the [`MarkedPtr`], returning the separated raw pointer and

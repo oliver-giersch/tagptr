@@ -50,6 +50,10 @@ pub trait MarkedNonNullable: NonNullable {
     /// Sets the tag of `ptr` to `tag` and returns the marked value.
     fn set_tag(ptr: Self, tag: usize) -> Self;
 
+    /// Updates the tag of `ptr` with `func` and returns the pointer with the
+    /// updated tag.
+    fn update_tag(ptr: Self, func: impl FnOnce(usize) -> usize) -> Self;
+
     /// Decomposes `ptr` and returns the separated raw [`NonNull`] and its tag
     /// value.
     fn decompose(ptr: &Self) -> (NonNull<Self::Item>, usize);

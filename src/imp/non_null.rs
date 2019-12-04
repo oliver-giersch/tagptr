@@ -191,25 +191,19 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
     }
 
     #[inline]
+    pub fn update_tag(self, func: impl FnOnce(usize) -> usize) -> Self {
+        let (ptr, tag) = self.decompose();
+        unsafe { Self::compose_unchecked(ptr, func(tag)) }
+    }
+
+    #[inline]
     pub unsafe fn add_tag(self, value: usize) -> Self {
         Self::new_unchecked(MarkedPtr::from_usize(self.inner.as_ptr() as usize + value))
     }
 
     #[inline]
-    pub fn wrapping_add_tag(self, value: usize) -> Self {
-        let (ptr, tag) = self.decompose();
-        unsafe { Self::compose_unchecked(ptr, tag + value) }
-    }
-
-    #[inline]
     pub unsafe fn sub_tag(self, value: usize) -> Self {
         Self::new_unchecked(MarkedPtr::from_usize(self.inner.as_ptr() as usize - value))
-    }
-
-    #[inline]
-    pub fn wrapping_sub_tag(self, value: usize) -> Self {
-        let (ptr, tag) = self.decompose();
-        unsafe { Self::compose_unchecked(ptr, tag - value) }
     }
 
     /// Decomposes the [`MarkedNonNull`], returning the separated raw
@@ -410,6 +404,11 @@ impl<T, N: Unsigned> MarkedNonNullable for MarkedNonNull<T, N> {
     }
 
     #[inline]
+    fn update_tag(ptr: Self, func: impl FnOnce(usize) -> usize) -> Self{
+        ptr.update_tag(func)
+    }
+
+    #[inline]
     fn decompose(ptr: &Self) -> (NonNull<Self::Item>, usize) {
         ptr.decompose()
     }
@@ -428,57 +427,6 @@ impl<T, N: Unsigned> MarkedNonNullable for MarkedNonNull<T, N> {
     fn decompose_tag(ptr: &Self) -> usize {
         ptr.decompose_tag()
     }
-
-    /*#[inline]
-    fn as_marked_ptr(arg: &Self) -> MarkedPtr<Self::Item, Self::MarkBits> {
-        arg.into_marked_ptr()
-    }
-
-    #[inline]
-    fn into_marked_ptr(arg: Self) -> MarkedPtr<Self::Item, Self::MarkBits> {
-        arg.into_marked_ptr()
-    }
-
-    #[inline]
-    fn as_marked_non_null(arg: &Self) -> MarkedNonNull<Self::Item, Self::MarkBits> {
-        *arg
-    }
-
-    #[inline]
-    fn into_marked_non_null(arg: Self) -> MarkedNonNull<Self::Item, Self::MarkBits> {
-        arg
-    }
-
-    #[inline]
-    fn clear_tag(arg: Self) -> Self {
-        arg.clear_tag()
-    }
-
-    #[inline]
-    fn set_tag(arg: Self, tag: usize) -> Self {
-        arg.set_tag(tag)
-    }
-
-    #[inline]
-    fn decompose(arg: Self) -> (Self, usize) {
-        let tag = arg.decompose_tag();
-        (arg.clear_tag(), tag)
-    }
-
-    #[inline]
-    fn decompose_ptr(arg: &Self) -> *mut Self::Item {
-        arg.decompose_ptr()
-    }
-
-    #[inline]
-    fn decompose_non_null(arg: &Self) -> NonNull<Self::Item> {
-        arg.decompose_non_null()
-    }
-
-    #[inline]
-    fn decompose_tag(arg: &Self) -> usize {
-        arg.decompose_tag()
-    }*/
 }
 
 /********** impl NonNullable **********************************************************************/
