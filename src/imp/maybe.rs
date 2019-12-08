@@ -59,7 +59,7 @@ impl<P: NonNullable> MaybeNull<P> {
     /// by `msg`.
     #[inline]
     pub fn expect(self, msg: &str) -> P {
-        self.non_null().expect(msg)
+        self.not_null().expect(msg)
     }
 
     /// Moves the pointer out of the [`Marked`] if it is
@@ -135,7 +135,7 @@ impl<P: NonNullable> MaybeNull<P> {
 
     /// Converts `self` from [`Marked<T>`][Marked] to [`Option<T>`][Option].
     #[inline]
-    pub fn non_null(self) -> Option<P> {
+    pub fn not_null(self) -> Option<P> {
         match self {
             NotNull(ptr) => Some(ptr),
             _ => None,
@@ -268,7 +268,7 @@ impl<T, N: Unsigned> From<MarkedPtr<T, N>> for MaybeNull<MarkedNonNull<T, N>> {
 impl<T: NonNullable> From<MaybeNull<T>> for Option<T> {
     #[inline]
     fn from(marked: MaybeNull<T>) -> Self {
-        marked.non_null()
+        marked.not_null()
     }
 }
 
