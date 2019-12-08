@@ -170,6 +170,7 @@ impl<P: NonNullable> MaybeNull<P> {
 }
 
 impl<P: MarkedNonNullable> MaybeNull<P> {
+    /// Converts `&self` into a `MarkedPtr`.
     #[inline]
     pub fn as_marked_ptr(&self) -> MarkedPtr<P::Item, P::MarkBits> {
         match self {
@@ -178,6 +179,7 @@ impl<P: MarkedNonNullable> MaybeNull<P> {
         }
     }
 
+    /// Converts `self` into a `MarkedPtr`.
     #[inline]
     pub fn into_marked_ptr(self) -> MarkedPtr<P::Item, P::MarkBits> {
         match self {
@@ -285,26 +287,6 @@ impl<T: NonNullable> From<Option<T>> for MaybeNull<T> {
         match opt {
             Some(ptr) => NotNull(ptr),
             None => Null(0),
-        }
-    }
-}
-
-impl<'a, T: NonNullable> From<&'a MaybeNull<T>> for MaybeNull<&'a T> {
-    #[inline]
-    fn from(reference: &'a MaybeNull<T>) -> Self {
-        match reference {
-            NotNull(val) => NotNull(val),
-            Null(tag) => Null(*tag),
-        }
-    }
-}
-
-impl<'a, T: NonNullable> From<&'a mut MaybeNull<T>> for MaybeNull<&'a mut T> {
-    #[inline]
-    fn from(reference: &'a mut MaybeNull<T>) -> Self {
-        match reference {
-            NotNull(val) => NotNull(val),
-            Null(tag) => Null(*tag),
         }
     }
 }
