@@ -33,24 +33,6 @@ impl<P: NonNullable> MaybeNull<P> {
         }
     }
 
-    /// Converts from [`&Marked<T>`][Marked] to [`Marked<&T>`][Marked].
-    #[inline]
-    pub fn as_ref(&self) -> MaybeNull<&P> {
-        match self {
-            NotNull(ptr) => NotNull(ptr),
-            Null(tag) => Null(*tag),
-        }
-    }
-
-    /// Converts from [`Marked<T>`][Marked] to `MarkedOption<&mut T>`.
-    #[inline]
-    pub fn as_mut(&mut self) -> MaybeNull<&mut P> {
-        match self {
-            NotNull(ptr) => NotNull(ptr),
-            Null(tag) => Null(*tag),
-        }
-    }
-
     /// Unwraps the [`Marked`], yielding the content of a [`Pointer`].
     ///
     /// # Panics
@@ -155,6 +137,36 @@ impl<P: NonNullable> MaybeNull<P> {
     pub fn replace(&mut self, value: P) -> Self {
         mem::replace(self, NotNull(value))
     }
+
+    /// Dereferences the pointer **without** checking if it is [`Null`].
+    ///
+    /// # Safety
+    ///
+    /// The caller has to ensure the [`MaybeNull`] contains a valid pointer to a
+    /// live object and that de-referencing it does not violate the aliasing
+    /// rules.
+    #[inline]
+    pub unsafe fn deref(&self) -> &P::Item {
+        match self {
+            NotNull(ptr) => &*P::as_const_ptr(ptr),
+            Null(_) => core::hint::unreachable_unchecked()
+        }
+    }
+
+    /// Mutable dereferences the pointer **without** checking if it is [`Null`].
+    ///
+    /// # Safety
+    ///
+    /// The caller has to ensure the [`MaybeNull`] contains a valid pointer to a
+    /// live object and that de-referencing it does not violate the aliasing
+    /// rules.
+    #[inline]
+    pub unsafe fn deref_mut(&mut self) -> &mut P::Item {
+        match self {
+            NotNull(ptr) => &mut *P::as_mut_ptr(ptr),
+            Null(_) => core::hint::unreachable_unchecked()
+        }
+    }
 }
 
 impl<P: MarkedNonNullable> MaybeNull<P> {
@@ -251,7 +263,7 @@ impl<T: NonNullable> Default for MaybeNull<T> {
     }
 }
 
-/*********** impl From ****************************************************************************/
+/*********** impl From (MarkedPtr) ****************************************************************/
 
 impl<T, N: Unsigned> From<MarkedPtr<T, N>> for MaybeNull<MarkedNonNull<T, N>> {
     #[inline]
@@ -265,12 +277,7 @@ impl<T, N: Unsigned> From<MarkedPtr<T, N>> for MaybeNull<MarkedNonNull<T, N>> {
     }
 }
 
-impl<T: NonNullable> From<MaybeNull<T>> for Option<T> {
-    #[inline]
-    fn from(marked: MaybeNull<T>) -> Self {
-        marked.not_null()
-    }
-}
+/*********** impl From (Option) *******************************************************************/
 
 impl<T: NonNullable> From<Option<T>> for MaybeNull<T> {
     #[inline]
