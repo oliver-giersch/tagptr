@@ -108,6 +108,13 @@ pub enum MaybeNull<P: NonNullable> {
 #[derive(Clone, Copy, Debug, Default, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub struct NullError;
 
+/// Returns `true` if the alignment of `T` is large enough so a pointer pointer
+/// to an instance may store the given number of `mark_bits`.
+#[inline]
+pub const fn check_sufficient_bits<T>(mark_bits: usize) -> bool {
+    lower_bits::<T>() > mark_bits
+}
+
 /********** helper functions **********************************************************************/
 
 #[inline]
