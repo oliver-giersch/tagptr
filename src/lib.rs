@@ -111,6 +111,13 @@ pub struct NullError;
 
 /********** public functions **********************************************************************/
 
+/// Returns `true` if the alignment of `T` is large enough so a pointer to an
+/// instance may store the given number of `tag_bits`.
+#[inline]
+pub const fn check_sufficient_alignment<T>(tag_bits: usize) -> bool {
+    lower_bits::<T>() >= tag_bits
+}
+
 /// Asserts that the alignment of `U` is large enough so a pointer to an
 /// instance may store `N` tag bits.
 ///
@@ -124,13 +131,6 @@ pub fn assert_alignment<T, N: Unsigned>() {
         check_sufficient_alignment::<T>(N::USIZE),
         "the respective type has insufficient alignment for storing N tag bits"
     );
-}
-
-/// Returns `true` if the alignment of `T` is large enough so a pointer to an
-/// instance may store the given number of `tag_bits`.
-#[inline]
-pub const fn check_sufficient_alignment<T>(tag_bits: usize) -> bool {
-    lower_bits::<T>() >= tag_bits
 }
 
 /********** helper functions **********************************************************************/
