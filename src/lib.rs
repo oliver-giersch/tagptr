@@ -130,7 +130,7 @@ pub fn assert_alignment<T, N: Unsigned>() {
 /// instance may store the given number of `tag_bits`.
 #[inline]
 pub const fn check_sufficient_alignment<T>(tag_bits: usize) -> bool {
-    lower_bits::<T>() > tag_bits
+    lower_bits::<T>() >= tag_bits
 }
 
 /********** helper functions **********************************************************************/
