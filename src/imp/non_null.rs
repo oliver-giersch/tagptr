@@ -55,12 +55,6 @@ impl<T, N> MarkedNonNull<T, N> {
         Self { inner: non_null, _marker: PhantomData }
     }
 
-    /// Cast to a pointer of another type.
-    #[inline]
-    pub const fn cast<U>(self) -> MarkedNonNull<U, N> {
-        MarkedNonNull { inner: self.inner.cast(), _marker: PhantomData }
-    }
-
     /// Returns the inner pointer *as is*, meaning any potential tag is not
     /// stripped.
     ///
@@ -91,6 +85,13 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
     pub const MARK_MASK: usize = crate::mark_mask::<T>(Self::MARK_BITS);
     /// The bitmask for the (higher) pointer bits.
     pub const POINTER_MASK: usize = !Self::MARK_MASK;
+
+    /// Cast to a pointer of another type.
+    #[inline]
+    pub fn cast<U>(self) -> MarkedNonNull<U, N> {
+        crate::assert_alignment::<U, N>();
+        MarkedNonNull { inner: self.inner.cast(), _marker: PhantomData }
+    }
 
     /// Creates a new [`MarkedNonNull`] from a raw pointer.
     ///
@@ -404,7 +405,7 @@ impl<T, N: Unsigned> MarkedNonNullable for MarkedNonNull<T, N> {
     }
 
     #[inline]
-    fn update_tag(ptr: Self, func: impl FnOnce(usize) -> usize) -> Self{
+    fn update_tag(ptr: Self, func: impl FnOnce(usize) -> usize) -> Self {
         ptr.update_tag(func)
     }
 

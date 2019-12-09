@@ -21,6 +21,7 @@ use core::sync::atomic::AtomicUsize;
 pub use typenum;
 
 pub use crate::traits::{MarkedNonNullable, NonNullable};
+use typenum::Unsigned;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // AtomicMarkedPtr
@@ -108,28 +109,45 @@ pub enum MaybeNull<P: NonNullable> {
 #[derive(Clone, Copy, Debug, Default, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub struct NullError;
 
+/********** public functions **********************************************************************/
+
+/// Asserts that the alignment of `U` is large enough so a pointer to an
+/// instance may store `N` tag bits.
+///
+/// # Panics
+///
+/// This function panics if the alignment of `U` is insufficient for storing
+/// `N` tag bits.
+#[inline]
+pub fn assert_alignment<T, N: Unsigned>() {
+    assert!(
+        check_sufficient_alignment::<T>(N::USIZE),
+        "the respective type has insufficient alignment for storing N tag bits"
+    );
+}
+
+/// Returns `true` if the alignment of `T` is large enough so a pointer to an
+/// instance may store the given number of `tag_bits`.
+#[inline]
+pub const fn check_sufficient_alignment<T>(tag_bits: usize) -> bool {
+    lower_bits::<T>() > tag_bits
+}
+
 /********** helper functions **********************************************************************/
 
-/// Returns `true` if the alignment of `T` is large enough so a pointer pointer
-/// to an instance may store the given number of `mark_bits`.
 #[inline]
-pub const fn check_sufficient_alignment<T>(mark_bits: usize) -> bool {
-    lower_bits::<T>() > mark_bits
+const fn decompose<T>(marked_ptr: usize, tag_bits: usize) -> (*mut T, usize) {
+    (decompose_ptr::<T>(marked_ptr, tag_bits), decompose_tag::<T>(marked_ptr, tag_bits))
 }
 
 #[inline]
-const fn decompose<T>(marked: usize, mark_bits: usize) -> (*mut T, usize) {
-    (decompose_ptr::<T>(marked, mark_bits), decompose_tag::<T>(marked, mark_bits))
+const fn decompose_ptr<T>(marked_ptr: usize, tag_bits: usize) -> *mut T {
+    (marked_ptr & !mark_mask::<T>(tag_bits)) as *mut _
 }
 
 #[inline]
-const fn decompose_ptr<T>(marked: usize, mark_bits: usize) -> *mut T {
-    (marked & !mark_mask::<T>(mark_bits)) as *mut _
-}
-
-#[inline]
-const fn decompose_tag<T>(marked: usize, mark_bits: usize) -> usize {
-    marked & mark_mask::<T>(mark_bits)
+const fn decompose_tag<T>(marked_ptr: usize, tag_bits: usize) -> usize {
+    marked_ptr & mark_mask::<T>(tag_bits)
 }
 
 #[inline]
@@ -139,13 +157,13 @@ const fn lower_bits<T>() -> usize {
 
 #[deny(const_err)]
 #[inline]
-const fn mark_mask<T>(mark_bits: usize) -> usize {
-    let _assert_sufficient_alignment = lower_bits::<T>() - mark_bits;
-    (1 << mark_bits) - 1
+const fn mark_mask<T>(tag_bits: usize) -> usize {
+    let _assert_sufficient_alignment = lower_bits::<T>() - tag_bits;
+    (1 << tag_bits) - 1
 }
 
 #[inline]
-fn compose<T>(ptr: *mut T, tag: usize, mark_bits: usize) -> *mut T {
-    debug_assert_eq!(ptr as usize & mark_mask::<T>(mark_bits), 0);
-    ((ptr as usize) | (mark_mask::<T>(mark_bits) & tag)) as *mut _
+fn compose<T>(ptr: *mut T, tag: usize, tag_bits: usize) -> *mut T {
+    debug_assert_eq!(ptr as usize & mark_mask::<T>(tag_bits), 0);
+    ((ptr as usize) | (mark_mask::<T>(tag_bits) & tag)) as *mut _
 }

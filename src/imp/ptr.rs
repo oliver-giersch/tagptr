@@ -65,12 +65,6 @@ impl<T, N> MarkedPtr<T, N> {
         Self { inner: val as *mut _, _marker: PhantomData }
     }
 
-    /// Casts to a pointer of type `U`.
-    #[inline]
-    pub const fn cast<U>(self) -> MarkedPtr<U, N> {
-        MarkedPtr { inner: self.inner.cast(), _marker: PhantomData }
-    }
-
     /// Returns the inner pointer *as is*, meaning any potential tag is not
     /// stripped.
     ///
@@ -93,11 +87,11 @@ impl<T, N> MarkedPtr<T, N> {
 
 impl<T, N: Unsigned> MarkedPtr<T, N> {
     /// The number of available mark bits for this type.
-    pub const MARK_BITS: usize = N::USIZE;
+    pub const TAG_BITS: usize = N::USIZE;
     /// The bitmask for the lower markable bits.
-    pub const MARK_MASK: usize = crate::mark_mask::<T>(Self::MARK_BITS);
+    pub const TAG_MASK: usize = crate::mark_mask::<T>(Self::TAG_BITS);
     /// The bitmask for the (higher) pointer bits.
-    pub const POINTER_MASK: usize = !Self::MARK_MASK;
+    pub const POINTER_MASK: usize = !Self::TAG_MASK;
 
     /// Composes a new [`MarkedPtr`] from a raw `ptr` and a `tag` value.
     ///
@@ -111,10 +105,21 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
     /// let raw = &1 as *const i32 as *mut i32;
     /// let ptr = MarkedPtr::compose(raw, 0b11);
     /// assert_eq!(ptr.decompose(), (raw, 0b11));
+    /// // any excess bits are silently truncated.
+    /// let ptr = MarkedPtr::compose(raw, 0b101);
+    /// assert_eq!(ptr.decompose(), (raw, 0b01));
     /// ```
     #[inline]
     pub fn compose(ptr: *mut T, tag: usize) -> Self {
-        Self::new(crate::compose(ptr, tag, Self::MARK_BITS))
+        crate::assert_alignment::<T, N>();
+        Self::new(crate::compose(ptr, tag, Self::TAG_BITS))
+    }
+
+    /// Cast to a pointer of another type.
+    #[inline]
+    pub fn cast<U>(self) -> MarkedPtr<U, N> {
+        crate::assert_alignment::<U, N>();
+        MarkedPtr { inner: self.inner.cast(), _marker: PhantomData }
     }
 
     /// Returns `true` if the [`MarkedPtr`] is null.
@@ -174,11 +179,11 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
     /// # Examples
     ///
     /// ```
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, conquer_pointer::typenum::U0>;
+    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, conquer_pointer::typenum::U2>;
     ///
     /// let ptr = MarkedPtr::compose(&mut 1, 0b11);
     /// let ptr = ptr.update_tag(|tag| tag - 1);
-    /// assert_eq!(ptr.decompose_ptr(), 0b10);
+    /// assert_eq!(ptr.decompose_tag(), 0b10);
     /// ```
     #[inline]
     pub fn update_tag(self, func: impl FnOnce(usize) -> usize) -> Self {
@@ -211,19 +216,19 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
     /// its tag.
     #[inline]
     pub fn decompose(self) -> (*mut T, usize) {
-        crate::decompose::<T>(self.inner as usize, Self::MARK_BITS)
+        crate::decompose::<T>(self.inner as usize, Self::TAG_BITS)
     }
 
     /// Decomposes the [`MarkedPtr`], returning only the separated raw pointer.
     #[inline]
     pub fn decompose_ptr(self) -> *mut T {
-        crate::decompose_ptr::<T>(self.inner as usize, Self::MARK_BITS)
+        crate::decompose_ptr::<T>(self.inner as usize, Self::TAG_BITS)
     }
 
     /// Decomposes the [`MarkedPtr`], returning only the separated tag value.
     #[inline]
     pub fn decompose_tag(self) -> usize {
-        crate::decompose_tag::<T>(self.inner as usize, Self::MARK_BITS)
+        crate::decompose_tag::<T>(self.inner as usize, Self::TAG_BITS)
     }
 
     /// Decomposes the marked pointer, returning an optional reference and the
@@ -399,6 +404,27 @@ mod tests {
     use core::ptr;
 
     type MarkedPtr = crate::MarkedPtr<i32, typenum::U2>;
+
+    #[test]
+    #[should_panic]
+    fn illegal_type() {
+        type InvMarkedPtr = crate::MarkedPtr<i32, typenum::U3>;
+        let _ptr = InvMarkedPtr::compose(ptr::null_mut(), 0b111);
+    }
+
+    #[test]
+    fn cast() {
+        let ptr = MarkedPtr::compose(ptr::null_mut(), 0b11);
+        let cast: crate::MarkedPtr<i64, typenum::U2> = ptr.cast();
+        assert_eq!(cast.decompose(), (ptr::null_mut(), 0b11));
+    }
+
+    #[test]
+    #[should_panic]
+    fn illegal_cast() {
+        let ptr = MarkedPtr::compose(ptr::null_mut(), 0b11);
+        let _cast: crate::MarkedPtr<i8, typenum::U2> = ptr.cast();
+    }
 
     #[test]
     fn from_usize() {
