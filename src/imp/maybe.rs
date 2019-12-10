@@ -58,6 +58,14 @@ impl<P: NonNullable> MaybeNull<P> {
         }
     }
 
+    #[inline]
+    pub unsafe fn unwrap_unchecked(self) -> P {
+        match self {
+            NotNull(ptr) => ptr,
+            _ => core::hint::unreachable_unchecked(),
+        }
+    }
+
     /// Returns the contained value or the result of the given `func`.
     #[inline]
     pub fn unwrap_or_else(self, func: impl (FnOnce(usize) -> P)) -> P {
@@ -136,36 +144,6 @@ impl<P: NonNullable> MaybeNull<P> {
     #[inline]
     pub fn replace(&mut self, value: P) -> Self {
         mem::replace(self, NotNull(value))
-    }
-
-    /// Dereferences the pointer **without** checking if it is [`Null`].
-    ///
-    /// # Safety
-    ///
-    /// The caller has to ensure the [`MaybeNull`] contains a valid pointer to a
-    /// live object and that de-referencing it does not violate the aliasing
-    /// rules.
-    #[inline]
-    pub unsafe fn deref(&self) -> &P::Item {
-        match self {
-            NotNull(ptr) => &*P::as_const_ptr(ptr),
-            Null(_) => core::hint::unreachable_unchecked()
-        }
-    }
-
-    /// Mutable dereferences the pointer **without** checking if it is [`Null`].
-    ///
-    /// # Safety
-    ///
-    /// The caller has to ensure the [`MaybeNull`] contains a valid pointer to a
-    /// live object and that de-referencing it does not violate the aliasing
-    /// rules.
-    #[inline]
-    pub unsafe fn deref_mut(&mut self) -> &mut P::Item {
-        match self {
-            NotNull(ptr) => &mut *P::as_mut_ptr(ptr),
-            Null(_) => core::hint::unreachable_unchecked()
-        }
     }
 }
 
