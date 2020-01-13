@@ -7,12 +7,7 @@ use core::ptr::NonNull;
 
 use typenum::Unsigned;
 
-use crate::traits::{MarkedNonNullable, NonNullable};
-use crate::{
-    MarkedNonNull, MarkedPtr,
-    MaybeNull::{self, NotNull, Null},
-    NullError,
-};
+use crate::{MarkedNonNull, MarkedPtr, NullError};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // MarkedNonNull
@@ -85,6 +80,14 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
     pub const MARK_MASK: usize = crate::mark_mask::<T>(Self::MARK_BITS);
     /// The bitmask for the (higher) pointer bits.
     pub const POINTER_MASK: usize = !Self::MARK_MASK;
+
+    #[inline]
+    pub fn new(marked_ptr: MarkedPtr<T, N>) -> Result<Self, usize> {
+        match marked_ptr.decompose() {
+            (ptr, _) if !ptr.is_null() => Ok(unsafe { Self::new_unchecked(marked_ptr) }),
+            (_, tag) => Err(tag),
+        }
+    }
 
     /// Cast to a pointer of another type.
     #[inline]
@@ -374,83 +377,6 @@ impl<T, N: Unsigned> fmt::Debug for MarkedNonNull<T, N> {
     }
 }
 
-/********** impl MarkedNonNullable ****************************************************************/
-
-impl<T, N: Unsigned> MarkedNonNullable for MarkedNonNull<T, N> {
-    type MarkBits = N;
-
-    #[inline]
-    fn as_marked_ptr(ptr: &Self) -> MarkedPtr<Self::Item, Self::MarkBits> {
-        ptr.into_marked_ptr()
-    }
-
-    #[inline]
-    fn into_marked_ptr(ptr: Self) -> MarkedPtr<Self::Item, Self::MarkBits> {
-        ptr.into_marked_ptr()
-    }
-
-    #[inline]
-    fn clear_tag(ptr: Self) -> Self {
-        ptr.clear_tag()
-    }
-
-    #[inline]
-    fn split_tag(ptr: Self) -> (Self, usize) {
-        ptr.split_tag()
-    }
-
-    #[inline]
-    fn set_tag(ptr: Self, tag: usize) -> Self {
-        ptr.set_tag(tag)
-    }
-
-    #[inline]
-    fn update_tag(ptr: Self, func: impl FnOnce(usize) -> usize) -> Self {
-        ptr.update_tag(func)
-    }
-
-    #[inline]
-    fn decompose(ptr: &Self) -> (NonNull<Self::Item>, usize) {
-        ptr.decompose()
-    }
-
-    #[inline]
-    fn decompose_ptr(ptr: &Self) -> *mut Self::Item {
-        ptr.decompose_ptr()
-    }
-
-    #[inline]
-    fn decompose_non_null(ptr: &Self) -> NonNull<Self::Item> {
-        ptr.decompose_non_null()
-    }
-
-    #[inline]
-    fn decompose_tag(ptr: &Self) -> usize {
-        ptr.decompose_tag()
-    }
-}
-
-/********** impl NonNullable **********************************************************************/
-
-impl<T, N: Unsigned> NonNullable for MarkedNonNull<T, N> {
-    type Item = T;
-
-    #[inline]
-    fn as_const_ptr(arg: &Self) -> *const Self::Item {
-        arg.decompose_ptr() as *const _
-    }
-
-    #[inline]
-    fn as_mut_ptr(arg: &Self) -> *mut Self::Item {
-        arg.decompose_ptr()
-    }
-
-    #[inline]
-    fn as_non_null(arg: &Self) -> NonNull<Self::Item> {
-        arg.decompose_non_null()
-    }
-}
-
 /********** impl Pointer **************************************************************************/
 
 impl<T, N: Unsigned> fmt::Pointer for MarkedNonNull<T, N> {
@@ -483,10 +409,7 @@ impl<T, N: Unsigned> TryFrom<MarkedPtr<T, N>> for MarkedNonNull<T, N> {
 
     #[inline]
     fn try_from(marked_ptr: MarkedPtr<T, N>) -> Result<Self, Self::Error> {
-        match MaybeNull::from(marked_ptr) {
-            NotNull(ptr) => Ok(ptr),
-            Null(_) => Err(NullError),
-        }
+        Self::new(marked_ptr).map_err(|_| NullError)
     }
 }
 

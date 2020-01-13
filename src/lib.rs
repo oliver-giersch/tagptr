@@ -11,16 +11,15 @@ pub mod arch64;
 
 mod atomic;
 mod imp;
-mod traits;
 
 use core::marker::PhantomData;
 use core::mem;
 use core::ptr::NonNull;
 use core::sync::atomic::AtomicUsize;
 
+// public re-export
 pub use typenum;
 
-pub use crate::traits::{MarkedNonNullable, NonNullable};
 use typenum::Unsigned;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -80,24 +79,6 @@ pub struct MarkedPtr<T, N> {
 pub struct MarkedNonNull<T, N> {
     inner: NonNull<T>,
     _marker: PhantomData<N>,
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-// MarkedOption
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/// A value that represents the possible states of a nullable marked pointer.
-///
-/// This type is similar to [`Option<T>`][Option] but can also express `null`
-/// pointers with mark bits.
-/// Note that unlike [`Option`] this type `enum` can not benefit from
-/// Null-Pointer-Optimization and hence takes up at least *two* memory words.
-#[derive(Clone, Copy, Hash, Eq, Ord, PartialEq, PartialOrd)]
-pub enum MaybeNull<P: NonNullable> {
-    /// Some reference or non-nullable pointer
-    NotNull(P),
-    /// Null pointer, potentially marked
-    Null(usize),
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
