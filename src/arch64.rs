@@ -15,10 +15,11 @@ use core::ptr::{self, NonNull};
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 #[cfg(all(target_arch = "x86_64", feature = "nightly"))]
-pub use dwcas::{AtomicTagPtr, TagPtr};
+pub use self::{AtomicTagPtr, TagPtr};
+use core::fmt::{Error, Formatter};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-// AtomicMarkedNativePtr
+// AtomicMarkedPtr64
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// An atomic native 64-bit marked pointer with 16 available bits for storing a
@@ -31,28 +32,19 @@ pub use dwcas::{AtomicTagPtr, TagPtr};
 /// However, it is also only available on 64-bit architectures that use 48-bit
 /// virtual addresses, which, as of 2019, is practically every 64-bit
 /// architecture, although this may change for future architectures.
-pub struct AtomicMarkedNativePtr<T> {
+pub struct AtomicMarkedPtr64<T> {
     inner: AtomicUsize,
     _marker: PhantomData<*mut T>,
 }
 
 /********** impl Send + Sync **********************************************************************/
 
-unsafe impl<T> Send for AtomicMarkedNativePtr<T> {}
-unsafe impl<T> Sync for AtomicMarkedNativePtr<T> {}
-
-/********** impl Default **************************************************************************/
-
-impl<T> Default for AtomicMarkedNativePtr<T> {
-    #[inline]
-    fn default() -> Self {
-        Self::null()
-    }
-}
+unsafe impl<T> Send for AtomicMarkedPtr64<T> {}
+unsafe impl<T> Sync for AtomicMarkedPtr64<T> {}
 
 /********** impl inherent *************************************************************************/
 
-impl<T> AtomicMarkedNativePtr<T> {
+impl<T> AtomicMarkedPtr64<T> {
     /// The number of available mark bits for this type.
     pub const MARK_BITS: usize = 16;
     /// The bitmask for the lower markable bits.
@@ -69,14 +61,14 @@ impl<T> AtomicMarkedNativePtr<T> {
 
     /// Creates a new [`AtomicMarkedNativePtr`].
     #[inline]
-    pub fn new(marked_ptr: MarkedNativePtr<T>) -> Self {
+    pub fn new(marked_ptr: MarkedPtr64<T>) -> Self {
         Self { inner: AtomicUsize::new(marked_ptr.into_usize()), _marker: PhantomData }
     }
 
     /// Consumes `self` and returns the inner [`MarkedNativePtr`].
     #[inline]
-    pub fn into_inner(self) -> MarkedNativePtr<T> {
-        MarkedNativePtr::from_usize(self.inner.into_inner())
+    pub fn into_inner(self) -> MarkedPtr64<T> {
+        MarkedPtr64::from_usize(self.inner.into_inner())
     }
 
     /// Returns a mutable reference to the underlying [`MarkedNativePtr`].
@@ -84,7 +76,7 @@ impl<T> AtomicMarkedNativePtr<T> {
     /// This is safe because the mutable reference guarantees that no other
     /// threads are concurrently accessing the atomic data.
     #[inline]
-    pub fn get_mut(&mut self) -> &mut MarkedNativePtr<T> {
+    pub fn get_mut(&mut self) -> &mut MarkedPtr64<T> {
         unsafe { &mut *(self.inner.get_mut() as *mut usize as *mut _) }
     }
 
@@ -109,16 +101,16 @@ impl<T> AtomicMarkedNativePtr<T> {
     /// ```
     /// use std::sync::atomic::Ordering;
     ///
-    /// use conquer_pointer::arch64::{AtomicMarkedNativePtr, MarkedNativePtr};
+    /// use conquer_pointer::arch64::{AtomicMarkedPtr64, MarkedPtr64};
     ///
-    /// let atomic = AtomicMarkedNativePtr::new(MarkedNativePtr::compose(&mut 5, 0b1));
+    /// let atomic = AtomicMarkedPtr64::new(MarkedPtr64::compose(&mut 5, 0b1));
     ///
     /// let load = atomic.load(Ordering::SeqCst);
     /// assert_eq!((Some(&mut 5), 0b1), unsafe { load.decompose_mut() });
     /// ```
     #[inline]
-    pub fn load(&self, order: Ordering) -> MarkedNativePtr<T> {
-        MarkedNativePtr::from_usize(self.inner.load(order))
+    pub fn load(&self, order: Ordering) -> MarkedPtr64<T> {
+        MarkedPtr64::from_usize(self.inner.load(order))
     }
 
     /// Stores a value into the [`AtomicMarkedNativePtr`].
@@ -142,15 +134,15 @@ impl<T> AtomicMarkedNativePtr<T> {
     /// ```
     /// use std::sync::atomic::Ordering;
     ///
-    /// use conquer_pointer::arch64::{AtomicMarkedNativePtr, MarkedNativePtr};
+    /// use conquer_pointer::arch64::{AtomicMarkedPtr64, MarkedPtr64};
     ///
-    /// let atomic = AtomicMarkedNativePtr::null();
-    /// let store = MarkedNativePtr::new(&mut 10);
+    /// let atomic = AtomicMarkedPtr64::null();
+    /// let store = MarkedPtr64::new(&mut 10);
     ///
     /// atomic.store(store, Ordering::SeqCst);
     /// ```
     #[inline]
-    pub fn store(&self, ptr: MarkedNativePtr<T>, order: Ordering) {
+    pub fn store(&self, ptr: MarkedPtr64<T>, order: Ordering) {
         self.inner.store(ptr.into_usize(), order);
     }
 
@@ -176,11 +168,11 @@ impl<T> AtomicMarkedNativePtr<T> {
     #[inline]
     pub fn compare_and_swap(
         &self,
-        current: MarkedNativePtr<T>,
-        new: MarkedNativePtr<T>,
+        current: MarkedPtr64<T>,
+        new: MarkedPtr64<T>,
         order: Ordering,
-    ) -> MarkedNativePtr<T> {
-        MarkedNativePtr::from_usize(self.inner.compare_and_swap(
+    ) -> MarkedPtr64<T> {
+        MarkedPtr64::from_usize(self.inner.compare_and_swap(
             current.into_usize(),
             new.into_usize(),
             order,
@@ -213,15 +205,15 @@ impl<T> AtomicMarkedNativePtr<T> {
     #[inline]
     pub fn compare_exchange(
         &self,
-        current: MarkedNativePtr<T>,
-        new: MarkedNativePtr<T>,
+        current: MarkedPtr64<T>,
+        new: MarkedPtr64<T>,
         success: Ordering,
         failure: Ordering,
-    ) -> Result<MarkedNativePtr<T>, MarkedNativePtr<T>> {
+    ) -> Result<MarkedPtr64<T>, MarkedPtr64<T>> {
         self.inner
             .compare_exchange(current.into_usize(), new.into_usize(), success, failure)
-            .map(MarkedNativePtr::from_usize)
-            .map_err(MarkedNativePtr::from_usize)
+            .map(MarkedPtr64::from_usize)
+            .map_err(MarkedPtr64::from_usize)
     }
 
     /// Stores a value into the pointer if the current value is the same
@@ -252,15 +244,15 @@ impl<T> AtomicMarkedNativePtr<T> {
     #[inline]
     pub fn compare_exchange_weak(
         &self,
-        current: MarkedNativePtr<T>,
-        new: MarkedNativePtr<T>,
+        current: MarkedPtr64<T>,
+        new: MarkedPtr64<T>,
         success: Ordering,
         failure: Ordering,
-    ) -> Result<MarkedNativePtr<T>, MarkedNativePtr<T>> {
+    ) -> Result<MarkedPtr64<T>, MarkedPtr64<T>> {
         self.inner
             .compare_exchange_weak(current.into_usize(), new.into_usize(), success, failure)
-            .map(MarkedNativePtr::from_usize)
-            .map_err(MarkedNativePtr::from_usize)
+            .map(MarkedPtr64::from_usize)
+            .map_err(MarkedPtr64::from_usize)
     }
 
     /// Adds to the current tag value, returning the previous [`MarkedNativePtr`].
@@ -290,8 +282,8 @@ impl<T> AtomicMarkedNativePtr<T> {
     /// Note, that this does not guarantee that no other thread can observe the
     /// corrupted pointer value before the panic occurs.
     #[inline]
-    pub fn fetch_add(&self, value: u16, order: Ordering) -> MarkedNativePtr<T> {
-        let prev = MarkedNativePtr::from_usize(
+    pub fn fetch_add(&self, value: u16, order: Ordering) -> MarkedPtr64<T> {
+        let prev = MarkedPtr64::from_usize(
             self.inner.fetch_add((value as usize) << Self::MARK_SHIFT, order),
         );
         debug_assert!(
@@ -302,20 +294,49 @@ impl<T> AtomicMarkedNativePtr<T> {
     }
 }
 
+/********** impl Default **************************************************************************/
+
+impl<T> Default for AtomicMarkedPtr64<T> {
+    #[inline]
+    fn default() -> Self {
+        Self::null()
+    }
+}
+
+/********** impl Debug ****************************************************************************/
+
+impl<T> fmt::Debug for AtomicMarkedPtr64<T> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let (ptr, tag) = self.load(Ordering::SeqCst).decompose();
+        f.debug_struct("AtomicMarkedPtr64").field("ptr", &ptr).field("tag", &tag).finish()
+    }
+}
+
+/********** impl Pointer **************************************************************************/
+
+impl<T> fmt::Pointer for AtomicMarkedPtr64<T> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let ptr = self.load(Ordering::SeqCst);
+        fmt::Pointer::fmt(&ptr, f)
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-// MarkedNativePtr
+// MarkedPtr64
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// A marked native (64-bit) pointer of which the upper 16 bits can be used for
 /// storing additional information.
 #[repr(transparent)]
-pub struct MarkedNativePtr<T> {
+pub struct MarkedPtr64<T> {
     inner: *mut T,
 }
 
 /********** impl Clone ****************************************************************************/
 
-impl<T> Clone for MarkedNativePtr<T> {
+impl<T> Clone for MarkedPtr64<T> {
     #[inline]
     fn clone(&self) -> Self {
         Self { inner: self.inner }
@@ -324,20 +345,11 @@ impl<T> Clone for MarkedNativePtr<T> {
 
 /********** impl Copy *****************************************************************************/
 
-impl<T> Copy for MarkedNativePtr<T> {}
-
-/********** impl Default ***************************************************************************/
-
-impl<T> Default for MarkedNativePtr<T> {
-    #[inline]
-    fn default() -> Self {
-        Self::null()
-    }
-}
+impl<T> Copy for MarkedPtr64<T> {}
 
 /********** impl inherent *************************************************************************/
 
-impl<T> MarkedNativePtr<T> {
+impl<T> MarkedPtr64<T> {
     /// The number of available mark bits for this type.
     pub const MARK_BITS: usize = 16;
     /// The bitmask for the lower markable bits.
@@ -368,8 +380,8 @@ impl<T> MarkedNativePtr<T> {
 
     /// Casts to a pointer of type `U`.
     #[inline]
-    pub const fn cast<U>(self) -> MarkedNativePtr<U> {
-        MarkedNativePtr { inner: self.inner.cast() }
+    pub const fn cast<U>(self) -> MarkedPtr64<U> {
+        MarkedPtr64 { inner: self.inner.cast() }
     }
 
     /// Returns the inner pointer *as is*, meaning any potential tag is not
@@ -429,7 +441,7 @@ impl<T> MarkedNativePtr<T> {
     /// ```
     /// use core::ptr;
     ///
-    /// type MarkedNativePtr = conquer_pointer::arch64::MarkedNativePtr<i32>;
+    /// type MarkedNativePtr = conquer_pointer::arch64::MarkedPtr64<i32>;
     ///
     /// let raw = &1 as *const i32 as *mut _;
     /// let ptr = MarkedNativePtr::compose(raw, 0b11);
@@ -526,35 +538,54 @@ impl<T> MarkedNativePtr<T> {
     }
 }
 
-impl<T> From<*mut T> for MarkedNativePtr<T> {
+/********** impl Default **************************************************************************/
+
+impl<T> Default for MarkedPtr64<T> {
+    #[inline]
+    fn default() -> Self {
+        Self::null()
+    }
+}
+
+/********** impl From (*mut T) ********************************************************************/
+
+impl<T> From<*mut T> for MarkedPtr64<T> {
     #[inline]
     fn from(ptr: *mut T) -> Self {
         Self::new(ptr)
     }
 }
 
-impl<T> From<*const T> for MarkedNativePtr<T> {
+/********** impl From (*const T) ******************************************************************/
+
+impl<T> From<*const T> for MarkedPtr64<T> {
     #[inline]
     fn from(ptr: *const T) -> Self {
         Self::new(ptr as *mut _)
     }
 }
 
-impl<'a, T> From<&'a T> for MarkedNativePtr<T> {
+/********** impl From (&T) ************************************************************************/
+
+impl<T> From<&T> for MarkedPtr64<T> {
     #[inline]
-    fn from(reference: &'a T) -> Self {
+    fn from(reference: &T) -> Self {
         Self::from(reference as *const _)
     }
 }
 
-impl<'a, T> From<&'a mut T> for MarkedNativePtr<T> {
+/********** impl From (&mut T) ********************************************************************/
+
+impl<T> From<&mut T> for MarkedPtr64<T> {
     #[inline]
-    fn from(reference: &'a mut T) -> Self {
+    fn from(reference: &mut T) -> Self {
         Self::new(reference)
     }
 }
 
-impl<T> From<NonNull<T>> for MarkedNativePtr<T> {
+/********** impl From (NonNull<T>) ****************************************************************/
+
+impl<T> From<NonNull<T>> for MarkedPtr64<T> {
     #[inline]
     fn from(non_null: NonNull<T>) -> Self {
         Self::new(non_null.as_ptr())
@@ -563,19 +594,17 @@ impl<T> From<NonNull<T>> for MarkedNativePtr<T> {
 
 /********** impl Debug ****************************************************************************/
 
-impl<T> fmt::Debug for MarkedNativePtr<T> {
+impl<T> fmt::Debug for MarkedPtr64<T> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("MarkedNativePtr")
-            .field("ptr", &self.decompose_ptr())
-            .field("tag", &self.decompose_tag())
-            .finish()
+        let (ptr, tag) = self.decompose();
+        f.debug_struct("MarkedNativePtr").field("ptr", &ptr).field("tag", &tag).finish()
     }
 }
 
 /********** impl Pointer **************************************************************************/
 
-impl<T> fmt::Pointer for MarkedNativePtr<T> {
+impl<T> fmt::Pointer for MarkedPtr64<T> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Pointer::fmt(&self.decompose_ptr(), f)
@@ -584,7 +613,7 @@ impl<T> fmt::Pointer for MarkedNativePtr<T> {
 
 /********** impl PartialEq ************************************************************************/
 
-impl<T> PartialEq for MarkedNativePtr<T> {
+impl<T> PartialEq for MarkedPtr64<T> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.inner.eq(&other.inner)
@@ -593,7 +622,7 @@ impl<T> PartialEq for MarkedNativePtr<T> {
 
 /********** impl PartialOrd ***********************************************************************/
 
-impl<T> PartialOrd for MarkedNativePtr<T> {
+impl<T> PartialOrd for MarkedPtr64<T> {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         self.inner.partial_cmp(&other.inner)
@@ -602,11 +631,11 @@ impl<T> PartialOrd for MarkedNativePtr<T> {
 
 /********** impl Eq *******************************************************************************/
 
-impl<T> Eq for MarkedNativePtr<T> {}
+impl<T> Eq for MarkedPtr64<T> {}
 
 /********** impl Ord ******************************************************************************/
 
-impl<T> Ord for MarkedNativePtr<T> {
+impl<T> Ord for MarkedPtr64<T> {
     #[inline]
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         self.inner.cmp(&other.inner)
@@ -615,7 +644,7 @@ impl<T> Ord for MarkedNativePtr<T> {
 
 /********** impl Hash *****************************************************************************/
 
-impl<T> Hash for MarkedNativePtr<T> {
+impl<T> Hash for MarkedPtr64<T> {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.inner.hash(state)

@@ -10,8 +10,6 @@ https://crates.io/crates/conquer-pointer)
 [![Documentation](https://docs.rs/conquer-pointer/badge.svg)](https://docs.rs/conquer-pointer)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](
 https://github.com/oliver-giersch/conquer-pointer)
-[![Rust 1.36+](https://img.shields.io/badge/Rust-1.39-orange)](
-https://www.rust-lang.org)
 
 ## Usage
 
@@ -29,10 +27,6 @@ word-sized memory chunks.
 Many concurrent lock-free algorithms for data structures require storing
 additional data in bitmasks that are composed together with pointers in their
 unused bits in order to fit into a single word.
-
-## Minimum Supported Rust Version (MSRV)
-
-The minimum supported Rust version for this crate is 1.36.0.
 
 ## Future Plans
 

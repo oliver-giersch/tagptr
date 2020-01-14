@@ -1,11 +1,13 @@
 //! Strongly typed pointers with reserved bits for storing additional bit
 //! patterns within a single pointer-width word.
 
+#![feature(const_generics)]
 #![no_std]
 #![warn(missing_docs)]
-#![allow(clippy::should_implement_trait)]
 #![cfg_attr(all(target_arch = "x86_64", feature = "nightly"), feature(stdsimd))]
 
+// this module relies on 48-bit virtual addresses and thus explicitly names each
+// supported architecture with this property.
 #[cfg(any(target_arch = "x86_64", target_arch = "powerpc64", target_arch = "aarch64"))]
 pub mod arch64;
 
@@ -16,11 +18,6 @@ use core::marker::PhantomData;
 use core::mem;
 use core::ptr::NonNull;
 use core::sync::atomic::AtomicUsize;
-
-// public re-export
-pub use typenum;
-
-use typenum::Unsigned;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // AtomicMarkedPtr
@@ -35,9 +32,9 @@ use typenum::Unsigned;
 ///
 /// [atomic]: core::sync::atomic::AtomicPtr
 #[repr(transparent)]
-pub struct AtomicMarkedPtr<T, N> {
+pub struct AtomicMarkedPtr<T, const N: usize> {
     inner: AtomicUsize,
-    _marker: PhantomData<(*mut T, N)>,
+    _marker: PhantomData<*mut T>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -53,9 +50,8 @@ pub struct AtomicMarkedPtr<T, N> {
 /// Attempts to use types with insufficient alignment will result in a compile-
 /// time error.
 #[repr(transparent)]
-pub struct MarkedPtr<T, N> {
+pub struct MarkedPtr<T, const N: usize> {
     inner: *mut T,
-    _marker: PhantomData<N>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -76,26 +72,26 @@ pub struct MarkedPtr<T, N> {
 /// type enforces at compile-time that no value `N` can be instantiated that
 /// exceeds `T`'s inherent alignment.
 #[repr(transparent)]
-pub struct MarkedNonNull<T, N> {
+pub struct MarkedNonNull<T, const N: usize> {
     inner: NonNull<T>,
-    _marker: PhantomData<N>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-// NullError
+// Null
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// An error type for fallible conversion from [`MarkedPtr`] to
 /// [`MarkedNonNull`].
 #[derive(Clone, Copy, Debug, Default, Hash, Eq, Ord, PartialEq, PartialOrd)]
-pub struct NullError;
+#[non_exhaustive]
+pub struct Null(pub usize);
 
 /********** public functions **********************************************************************/
 
 /// Returns `true` if the alignment of `T` is large enough so a pointer to an
 /// instance may store the given number of `tag_bits`.
 #[inline]
-pub const fn check_sufficient_alignment<T>(tag_bits: usize) -> bool {
+pub const fn has_sufficient_alignment<T>(tag_bits: usize) -> bool {
     lower_bits::<T>() >= tag_bits
 }
 
@@ -107,39 +103,47 @@ pub const fn check_sufficient_alignment<T>(tag_bits: usize) -> bool {
 /// This function panics if the alignment of `U` is insufficient for storing
 /// `N` tag bits.
 #[inline]
-pub fn assert_alignment<T, N: Unsigned>() {
+pub fn assert_alignment<T, const N: usize>() {
     assert!(
-        check_sufficient_alignment::<T>(N::USIZE),
+        has_sufficient_alignment::<T>(N),
         "the respective type has insufficient alignment for storing N tag bits"
     );
 }
 
-/********** helper functions **********************************************************************/
+/********** internal helper functions *************************************************************/
 
+/// Decomposes the integer representation of a `marked_ptr` for a given number
+/// of `tag_bits` into a raw pointer and a separated tag value.
 #[inline]
 const fn decompose<T>(marked_ptr: usize, tag_bits: usize) -> (*mut T, usize) {
     (decompose_ptr::<T>(marked_ptr, tag_bits), decompose_tag::<T>(marked_ptr, tag_bits))
 }
 
+/// Decomposes the integer representation of a `marked_ptr` for a given number
+/// of `tag_bits` into only a raw pointer.
 #[inline]
 const fn decompose_ptr<T>(marked_ptr: usize, tag_bits: usize) -> *mut T {
     (marked_ptr & !mark_mask::<T>(tag_bits)) as *mut _
 }
 
+/// Decomposes the integer representation of a `marked_ptr` for a given number
+/// of `tag_bits` into only a separated tag value.
 #[inline]
 const fn decompose_tag<T>(marked_ptr: usize, tag_bits: usize) -> usize {
     marked_ptr & mark_mask::<T>(tag_bits)
 }
 
+/// Returns the (alignment-dependent) number of unused lower bits in a pointer
+/// to type `T`.
 #[inline]
 const fn lower_bits<T>() -> usize {
     mem::align_of::<T>().trailing_zeros() as usize
 }
 
-#[deny(const_err)]
+//#[deny(const_err)]
 #[inline]
 const fn mark_mask<T>(tag_bits: usize) -> usize {
-    let _assert_sufficient_alignment = lower_bits::<T>() - tag_bits;
+    //let _assert_sufficient_alignment = lower_bits::<T>() - tag_bits;
     (1 << tag_bits) - 1
 }
 

@@ -2,31 +2,32 @@ use core::fmt;
 use core::marker::PhantomData;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-use typenum::Unsigned;
-
-use crate::{AtomicMarkedPtr, MarkedPtr};
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-// AtomicMarkedPtr
-////////////////////////////////////////////////////////////////////////////////////////////////////
+use crate::{AtomicMarkedPtr, MarkedNonNull, MarkedPtr};
 
 /********** impl Send + Sync **********************************************************************/
 
-unsafe impl<T, N> Send for AtomicMarkedPtr<T, N> {}
-unsafe impl<T, N> Sync for AtomicMarkedPtr<T, N> {}
+unsafe impl<T, const N: usize> Send for AtomicMarkedPtr<T, N> {}
+unsafe impl<T, const N: usize> Sync for AtomicMarkedPtr<T, N> {}
 
 /********** impl Default **************************************************************************/
 
-impl<T, N> Default for AtomicMarkedPtr<T, N> {
+impl<T, const N: usize> Default for AtomicMarkedPtr<T, N> {
     #[inline]
     fn default() -> Self {
         Self::null()
     }
 }
 
-/********** impl inherent (const) *****************************************************************/
+/********** impl inherent *************************************************************************/
 
-impl<T, N> AtomicMarkedPtr<T, N> {
+impl<T, const N: usize> AtomicMarkedPtr<T, N> {
+    /// The number of available mark bits for this type.
+    pub const MARK_BITS: usize = N;
+    /// The bitmask for the lower markable bits.
+    pub const MARK_MASK: usize = crate::mark_mask::<T>(Self::MARK_BITS);
+    /// The bitmask for the (higher) pointer bits.
+    pub const POINTER_MASK: usize = !Self::MARK_MASK;
+
     /// Creates a new and unmarked `null` pointer.
     #[inline]
     pub const fn null() -> Self {
@@ -76,8 +77,8 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     /// ```
     /// use std::sync::atomic::Ordering;
     ///
-    /// type MarkedPtr<T> = conquer_pointer::MarkedPtr<T, conquer_pointer::typenum::U1>;
-    /// type AtomicMarkedPtr<T> = conquer_pointer::AtomicMarkedPtr<T, conquer_pointer::typenum::U1>;
+    /// type MarkedPtr<T> = conquer_pointer::MarkedPtr<T, 1>;
+    /// type AtomicMarkedPtr<T> = conquer_pointer::AtomicMarkedPtr<T, 1>;
     ///
     /// let atomic = AtomicMarkedPtr::new(MarkedPtr::compose(&mut 5, 0b1));
     ///
@@ -111,8 +112,8 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     /// ```
     /// use std::sync::atomic::Ordering;
     ///
-    /// type MarkedPtr<T> = conquer_pointer::MarkedPtr<T, typenum::U0>;
-    /// type AtomicMarkedPtr<T> = conquer_pointer::AtomicMarkedPtr<T, typenum::U0>;
+    /// type MarkedPtr<T> = conquer_pointer::MarkedPtr<T, 0>;
+    /// type AtomicMarkedPtr<T> = conquer_pointer::AtomicMarkedPtr<T, 0>;
     ///
     /// let atomic = AtomicMarkedPtr::null();
     /// let store = MarkedPtr::new(&mut 10);
@@ -142,7 +143,7 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     /// ```
     /// use std::sync::atomic::Ordering;
     ///
-    /// type MarkedPtr<T> = conquer_pointer::MarkedPtr<T, typenum::U0>;
+    /// type MarkedPtr<T> = conquer_pointer::MarkedPtr<T, 0>;
     /// ```
     #[inline]
     pub fn swap(&self, ptr: MarkedPtr<T, N>, order: Ordering) -> MarkedPtr<T, N> {
@@ -215,7 +216,7 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     ) -> Result<MarkedPtr<T, N>, MarkedPtr<T, N>> {
         self.inner
             .compare_exchange(current.into_usize(), new.into_usize(), success, failure)
-            .map(MarkedPtr::from_usize)
+            .map(|_| current)
             .map_err(MarkedPtr::from_usize)
     }
 
@@ -254,18 +255,9 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     ) -> Result<MarkedPtr<T, N>, MarkedPtr<T, N>> {
         self.inner
             .compare_exchange_weak(current.into_usize(), new.into_usize(), success, failure)
-            .map(MarkedPtr::from_usize)
+            .map(|_| current)
             .map_err(MarkedPtr::from_usize)
     }
-}
-
-impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
-    /// The number of available mark bits for this type.
-    pub const MARK_BITS: usize = N::USIZE;
-    /// The bitmask for the lower markable bits.
-    pub const MARK_MASK: usize = crate::mark_mask::<T>(Self::MARK_BITS);
-    /// The bitmask for the (higher) pointer bits.
-    pub const POINTER_MASK: usize = !Self::MARK_MASK;
 
     /// Adds to the current tag value, returning the previous [`MarkedPtr`].
     ///
@@ -460,7 +452,7 @@ impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
 
 /********** impl Debug ****************************************************************************/
 
-impl<T, N: Unsigned> fmt::Debug for AtomicMarkedPtr<T, N> {
+impl<T, const N: usize> fmt::Debug for AtomicMarkedPtr<T, N> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (ptr, tag) = self.load(Ordering::SeqCst).decompose();
@@ -468,11 +460,19 @@ impl<T, N: Unsigned> fmt::Debug for AtomicMarkedPtr<T, N> {
     }
 }
 
-/********** impl From *****************************************************************************/
+/********** impl From (MarkedPtr) *****************************************************************/
 
-impl<T, N> From<MarkedPtr<T, N>> for AtomicMarkedPtr<T, N> {
+impl<T, const N: usize> From<MarkedPtr<T, N>> for AtomicMarkedPtr<T, N> {
     #[inline]
     fn from(marked_ptr: MarkedPtr<T, N>) -> Self {
+        Self { inner: AtomicUsize::new(marked_ptr.into_usize()), _marker: PhantomData }
+    }
+}
+
+/********** impl From (MarkedNonNull) *************************************************************/
+
+impl<T, const N: usize> From<MarkedNonNull<T, N>> for AtomicMarkedPtr<T, N> {
+    fn from(marked_ptr: MarkedNonNull<T, N>) -> Self {
         Self { inner: AtomicUsize::new(marked_ptr.into_usize()), _marker: PhantomData }
     }
 }
