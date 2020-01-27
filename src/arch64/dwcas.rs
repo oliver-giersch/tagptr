@@ -275,7 +275,7 @@ impl<T> TagPtr<T> {
     }
 }
 
-/*********** impl From ****************************************************************************/
+/*********** impl From (*const T) *****************************************************************/
 
 impl<T> From<*const T> for TagPtr<T> {
     #[inline]
@@ -284,6 +284,8 @@ impl<T> From<*const T> for TagPtr<T> {
     }
 }
 
+/*********** impl From (*mut T) *******************************************************************/
+
 impl<T> From<*mut T> for TagPtr<T> {
     #[inline]
     fn from(ptr: *mut T) -> Self {
@@ -291,19 +293,25 @@ impl<T> From<*mut T> for TagPtr<T> {
     }
 }
 
-impl<T> From<&'_ T> for TagPtr<T> {
+/*********** impl From (&T) ***********************************************************************/
+
+impl<T> From<&T> for TagPtr<T> {
     #[inline]
-    fn from(reference: &'_ T) -> Self {
+    fn from(reference: &T) -> Self {
         Self(reference as *const _ as *mut _, 0)
     }
 }
 
-impl<T> From<&'_ mut T> for TagPtr<T> {
+/*********** impl From (&mut T) *******************************************************************/
+
+impl<T> From<&mut T> for TagPtr<T> {
     #[inline]
-    fn from(reference: &'_ mut T) -> Self {
+    fn from(reference: &mut T) -> Self {
         Self(reference as *mut _, 0)
     }
 }
+
+/*********** impl From (NonNull<T>) ***************************************************************/
 
 impl<T> From<NonNull<T>> for TagPtr<T> {
     #[inline]

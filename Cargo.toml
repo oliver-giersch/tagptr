@@ -12,3 +12,6 @@ exclude = [".travis.yml"]
 
 [features]
 nightly = []
+
+[dependencies]
+typenum = "1.11.2"

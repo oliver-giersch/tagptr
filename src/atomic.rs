@@ -2,30 +2,38 @@ use core::fmt;
 use core::marker::PhantomData;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
+use typenum::Unsigned;
+
 use crate::{AtomicMarkedPtr, MarkedNonNull, MarkedPtr};
 
 /********** impl Send + Sync **********************************************************************/
 
-unsafe impl<T, const N: usize> Send for AtomicMarkedPtr<T, N> {}
-unsafe impl<T, const N: usize> Sync for AtomicMarkedPtr<T, N> {}
+unsafe impl<T, N> Send for AtomicMarkedPtr<T, N> {}
+unsafe impl<T, N> Sync for AtomicMarkedPtr<T, N> {}
 
 /********** impl Default **************************************************************************/
 
-impl<T, const N: usize> Default for AtomicMarkedPtr<T, N> {
+impl<T, N> Default for AtomicMarkedPtr<T, N> {
     #[inline]
     fn default() -> Self {
         Self::null()
     }
 }
 
+/********** impl inherent (const) *****************************************************************/
+
+impl<T, N> AtomicMarkedPtr<T, N> {}
+
+//impl_marked_ptr! {AtomicMarkedPtr<T, N>, MarkedPtr<T, N>, {T, const N: usize} }
+
 /********** impl inherent *************************************************************************/
 
-impl<T, const N: usize> AtomicMarkedPtr<T, N> {
-    /// The number of available mark bits for this type.
-    pub const MARK_BITS: usize = N;
-    /// The bitmask for the lower markable bits.
+impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
+    /// The number of available tag bits for this type.
+    pub const MARK_BITS: usize = N::USIZE;
+    /// The bitmask for the lower bits available for storing the tag value.
     pub const MARK_MASK: usize = crate::mark_mask::<T>(Self::MARK_BITS);
-    /// The bitmask for the (higher) pointer bits.
+    /// The bitmask for the (higher) bits for storing the pointer itself.
     pub const POINTER_MASK: usize = !Self::MARK_MASK;
 
     /// Creates a new and unmarked `null` pointer.

@@ -16,7 +16,6 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 
 #[cfg(all(target_arch = "x86_64", feature = "nightly"))]
 pub use self::{AtomicTagPtr, TagPtr};
-use core::fmt::{Error, Formatter};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // AtomicMarkedPtr64
@@ -59,19 +58,19 @@ impl<T> AtomicMarkedPtr64<T> {
         Self { inner: AtomicUsize::new(0), _marker: PhantomData }
     }
 
-    /// Creates a new [`AtomicMarkedNativePtr`].
+    /// Creates a new [`AtomicMarkedPtr64`].
     #[inline]
     pub fn new(marked_ptr: MarkedPtr64<T>) -> Self {
         Self { inner: AtomicUsize::new(marked_ptr.into_usize()), _marker: PhantomData }
     }
 
-    /// Consumes `self` and returns the inner [`MarkedNativePtr`].
+    /// Consumes `self` and returns the inner [`MarkedPtr64`].
     #[inline]
     pub fn into_inner(self) -> MarkedPtr64<T> {
         MarkedPtr64::from_usize(self.inner.into_inner())
     }
 
-    /// Returns a mutable reference to the underlying [`MarkedNativePtr`].
+    /// Returns a mutable reference to the underlying [`MarkedPtr64`].
     ///
     /// This is safe because the mutable reference guarantees that no other
     /// threads are concurrently accessing the atomic data.
@@ -80,7 +79,7 @@ impl<T> AtomicMarkedPtr64<T> {
         unsafe { &mut *(self.inner.get_mut() as *mut usize as *mut _) }
     }
 
-    /// Loads the value of the [`AtomicMarkedNativePtr`].
+    /// Loads the value of the [`AtomicMarkedPtr64`].
     ///
     /// `load` takes an [`Ordering`] argument which describes the memory
     /// ordering of this operation. Possible values are [`SeqCst`][seq_cst],
@@ -113,7 +112,7 @@ impl<T> AtomicMarkedPtr64<T> {
         MarkedPtr64::from_usize(self.inner.load(order))
     }
 
-    /// Stores a value into the [`AtomicMarkedNativePtr`].
+    /// Stores a value into the [`AtomicMarkedPtr64`].
     ///
     /// `store` takes an [`Ordering`] argument which describes the
     /// memory ordering of this operation. Possible values are
@@ -353,11 +352,12 @@ impl<T> MarkedPtr64<T> {
     /// The number of available mark bits for this type.
     pub const MARK_BITS: usize = 16;
     /// The bitmask for the lower markable bits.
-    pub const MARK_MASK: usize = 0xFFFF << Self::MARK_SHIFT;
+    pub const MARK_MASK: usize = 0xFFFF << Self::TAG_SHIFT;
     /// The bitmask for the (higher) pointer bits.
     pub const POINTER_MASK: usize = !Self::MARK_MASK;
 
-    const MARK_SHIFT: usize = 48;
+    /// The number of bits the tag value is shifted to the left.
+    const TAG_SHIFT: usize = 48;
 
     /// Creates a new unmarked `null` pointer.
     #[inline]
@@ -365,13 +365,13 @@ impl<T> MarkedPtr64<T> {
         Self::new(ptr::null_mut())
     }
 
-    /// Creates a new unmarked [`MarkedNativePtr`].
+    /// Creates a new unmarked [`MarkedPtr64`].
     #[inline]
     pub const fn new(ptr: *mut T) -> Self {
         Self { inner: ptr }
     }
 
-    /// Creates a [`MarkedNativePtr`] from the integer (numeric) representation
+    /// Creates a [`MarkedPtr64`] from the integer (numeric) representation
     /// of a potentially marked pointer.
     #[inline]
     pub const fn from_usize(val: usize) -> Self {
@@ -391,7 +391,7 @@ impl<T> MarkedPtr64<T> {
     /// the pointer is still marked and even if the pointer itself points to a
     /// valid and live value.
     #[inline]
-    pub const fn into_ptr(self) -> *mut T {
+    pub const fn into_raw(self) -> *mut T {
         self.inner
     }
 
@@ -413,17 +413,17 @@ impl<T> MarkedPtr64<T> {
         Self::compose(self.decompose_ptr(), tag)
     }
 
-    /// Adds `value` to the current tag without regard for the previous value.
+    /// Adds `value` to the current tag *without* regard for the previous value.
     ///
     /// This method does not perform any checks, so it may overflow the tag
     /// bits, result in a pointer to a different value, a null pointer or an
-    //  unaligned pointer.
+    ///  unaligned pointer.
     #[inline]
     pub fn add_tag(self, value: usize) -> Self {
         Self::from_usize(self.into_usize() + value)
     }
 
-    /// Subtracts `value` to the current tag without regard for the previous
+    /// Subtracts `value` from the current tag *without* regard for the previous
     /// value.
     ///
     /// This method does not perform any checks, so it may underflow the tag
@@ -434,7 +434,7 @@ impl<T> MarkedPtr64<T> {
         Self::from_usize(self.into_usize() - value)
     }
 
-    /// Composes a new [`MarkedNativePtr`] from a raw `ptr` and a `tag` value.
+    /// Composes a new [`MarkedPtr64`] from a raw `ptr` and a `tag` value.
     ///
     /// # Examples
     ///
@@ -449,31 +449,31 @@ impl<T> MarkedPtr64<T> {
     /// ```
     #[inline]
     pub fn compose(ptr: *mut T, tag: u16) -> Self {
-        Self::new((ptr as usize | (tag as usize) << Self::MARK_SHIFT) as *mut _)
+        Self::new((ptr as usize | (tag as usize) << Self::TAG_SHIFT) as *mut _)
     }
 
-    /// Decomposes the [`MarkedNativePtr`], returning the separated raw pointer
+    /// Decomposes the [`MarkedPtr64`], returning the separated raw pointer
     /// and its tag.
     #[inline]
     pub fn decompose(self) -> (*mut T, u16) {
         (self.decompose_ptr(), self.decompose_tag())
     }
 
-    /// Decomposes the [`MarkedNativePtr`], returning only the separated raw
+    /// Decomposes the [`MarkedPtr64`], returning only the separated raw
     /// pointer.
     #[inline]
     pub fn decompose_ptr(self) -> *mut T {
         (self.inner as usize & Self::POINTER_MASK) as *mut _
     }
 
-    /// Decomposes the [`MarkedNativePtr`], returning only the separated tag
+    /// Decomposes the [`MarkedPtr64`], returning only the separated tag
     /// value.
     #[inline]
     pub fn decompose_tag(self) -> u16 {
-        (self.inner as usize >> Self::MARK_SHIFT) as u16
+        (self.inner as usize >> Self::TAG_SHIFT) as u16
     }
 
-    /// Decomposes the [`MarkedNativePtr`], returning an optional reference and the
+    /// Decomposes the [`MarkedPtr64`], returning an optional reference and the
     /// separated tag.
     ///
     /// In case the pointer stripped of its tag is null, [`None`] is returned as

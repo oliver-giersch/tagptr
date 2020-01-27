@@ -6,6 +6,9 @@
 #![warn(missing_docs)]
 #![cfg_attr(all(target_arch = "x86_64", feature = "nightly"), feature(stdsimd))]
 
+#[macro_use]
+mod macros;
+
 // this module relies on 48-bit virtual addresses and thus explicitly names each
 // supported architecture with this property.
 #[cfg(any(target_arch = "x86_64", target_arch = "powerpc64", target_arch = "aarch64"))]
@@ -18,6 +21,10 @@ use core::marker::PhantomData;
 use core::mem;
 use core::ptr::NonNull;
 use core::sync::atomic::AtomicUsize;
+
+// public re-export
+pub use typenum;
+use typenum::Unsigned;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // AtomicMarkedPtr
@@ -32,9 +39,9 @@ use core::sync::atomic::AtomicUsize;
 ///
 /// [atomic]: core::sync::atomic::AtomicPtr
 #[repr(transparent)]
-pub struct AtomicMarkedPtr<T, const N: usize> {
+pub struct AtomicMarkedPtr<T, N> {
     inner: AtomicUsize,
-    _marker: PhantomData<*mut T>,
+    _marker: PhantomData<(*mut T, N)>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -50,8 +57,9 @@ pub struct AtomicMarkedPtr<T, const N: usize> {
 /// Attempts to use types with insufficient alignment will result in a compile-
 /// time error.
 #[repr(transparent)]
-pub struct MarkedPtr<T, const N: usize> {
+pub struct MarkedPtr<T, N> {
     inner: *mut T,
+    _marker: PhantomData<N>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -72,16 +80,16 @@ pub struct MarkedPtr<T, const N: usize> {
 /// type enforces at compile-time that no value `N` can be instantiated that
 /// exceeds `T`'s inherent alignment.
 #[repr(transparent)]
-pub struct MarkedNonNull<T, const N: usize> {
+pub struct MarkedNonNull<T, N> {
     inner: NonNull<T>,
+    _marker: PhantomData<N>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Null
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/// An error type for fallible conversion from [`MarkedPtr`] to
-/// [`MarkedNonNull`].
+/// A type representing a `null` pointer with potential tag bits.
 #[derive(Clone, Copy, Debug, Default, Hash, Eq, Ord, PartialEq, PartialOrd)]
 #[non_exhaustive]
 pub struct Null(pub usize);
@@ -103,9 +111,9 @@ pub const fn has_sufficient_alignment<T>(tag_bits: usize) -> bool {
 /// This function panics if the alignment of `U` is insufficient for storing
 /// `N` tag bits.
 #[inline]
-pub fn assert_alignment<T, const N: usize>() {
+pub fn assert_alignment<T, N: Unsigned>() {
     assert!(
-        has_sufficient_alignment::<T>(N),
+        has_sufficient_alignment::<T>(N::USIZE),
         "the respective type has insufficient alignment for storing N tag bits"
     );
 }

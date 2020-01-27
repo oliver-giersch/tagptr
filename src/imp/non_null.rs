@@ -23,11 +23,11 @@ impl<T, const N: usize> Copy for MarkedNonNull<T, N> {}
 /********** impl inherent *************************************************************************/
 
 impl<T, const N: usize> MarkedNonNull<T, N> {
-    /// The number of available mark bits for this type.
+    /// The number of available tag bits for this type.
     pub const MARK_BITS: usize = N;
-    /// The bitmask for the lower markable bits.
+    /// The bitmask for the lower bits available for storing the tag value.
     pub const MARK_MASK: usize = crate::mark_mask::<T>(Self::MARK_BITS);
-    /// The bitmask for the (higher) pointer bits.
+    /// The bitmask for the (higher) bits for storing the pointer itself.
     pub const POINTER_MASK: usize = !Self::MARK_MASK;
 
     /// Creates a new [`MarkedNonNull`] from a marked pointer without checking
@@ -72,40 +72,42 @@ impl<T, const N: usize> MarkedNonNull<T, N> {
         }
     }
 
-    /// Composes a new [`MarkedNonNull`] from a raw `ptr` and a `tag` value.
+    /// Composes a new [`MarkedNonNull`] from a raw non null `ptr` and a `tag`
+    /// value.
     ///
+    /// The supplied `ptr` is assumed to be well-aligned (i.e. has no tag bits
+    /// set), so this function may lead to unexpected results when this is not
+    /// the case.
     /// For a fallible version of this function, see
     /// [`try_compose`][MarkedNonNull::try_compose].
     ///
     /// # Panics
     ///
-    /// This function panics, if `ptr` is a actually `null` pointer if its first
-    /// `N` bits are interpreted as tag.
-    /// For instance, `0x1` would be a valid value for `NonNull`, even though
-    /// de-referencing it would be undefined behaviour.
-    /// The same value is not valid for `MarkedNonNull` with `N > 0`, however,
-    /// since it would be interpreted as a `null` pointer with tag value of `1`.
-    /// This is usually not a problem as long as `ptr` is well aligned, since
-    /// the number of mark bits can not exceed `T`'s alignment.
+    /// This function **panics** if any of `ptr`'s first `N` bits are set but
+    /// all subsequent bits are zeroed.
+    /// Composing such a pointer would result in a marked `null` pointer, which
+    /// is prohibited for this type.
     #[inline]
     pub fn compose(ptr: NonNull<T>, tag: usize) -> Self {
         Self::try_compose(ptr, tag)
             .expect("`ptr` is misaligned for `N` mark bits - could be interpreted as a marked `null` pointer.")
     }
 
-    /// Attempts to compose a new [`MarkedNonNull`] from a raw `ptr` and a `tag`
-    /// value.
+    /// Attempts to compose a new [`MarkedNonNull`] from a raw non null `ptr`
+    /// and a `tag` value.
+    ///
+    /// The supplied `ptr` is assumed to be well-aligned (i.e. has no tag bits
+    /// set), so this function may lead to unexpected results when this is not
+    /// the case.
     ///
     /// # Errors
     ///
-    /// This function fails, if `ptr` is a actually `null` pointer if its first
-    /// `N` bits are interpreted as tag.
-    /// For instance, `0x1` would be a valid value for `NonNull`, even though
-    /// de-referencing it would be undefined behaviour.
-    /// The same value is not valid for `MarkedNonNull` with `N > 0`, however,
-    /// since it would be interpreted as a `null` pointer with tag value of `1`.
-    /// This is usually not a problem as long as `ptr` is well aligned, since
-    /// the number of mark bits can not exceed `T`'s alignment.
+    /// This function **fails** if any of `ptr`'s first `N` bits are set but all
+    /// subsequent bits are zeroed.
+    /// Composing such a pointer would result in a marked `null` pointer, which
+    /// is prohibited for this type.
+    /// In case of an error, a [`Null`] type is returned with the tag value that
+    /// was contained within `ptr`.
     #[inline]
     pub fn try_compose(ptr: NonNull<T>, tag: usize) -> Result<Self, Null> {
         match ptr.as_ptr() as usize & Self::POINTER_MASK {
@@ -114,20 +116,23 @@ impl<T, const N: usize> MarkedNonNull<T, N> {
         }
     }
 
-    /// Composes a new [`MarkedNonNull`] from a raw `ptr` and a `tag` value
-    /// without checking if `ptr` is actually a `null` pointer if it is first
-    /// `N` bits are interpreted as tag.
+    /// Composes a new [`MarkedNonNull`] from a raw non null `ptr` and a `tag`
+    /// value.
+    /// This function performs to check to determine whether `ptr` is actually
+    /// valid for composing a [`MarkedNonNull`].
     ///
     /// # Safety
     ///
-    /// The caller has to ensure, that `ptr` is not a marked `null` pointer for
-    /// `N` mark bits.
+    /// The caller has to ensure that not all of `ptr`'s subsequent bits after
+    /// the first `N` bits are zeroed.
+    /// Composing such a pointer would result in a marked `null` pointer, which
+    /// is prohibited for this type.
     #[inline]
     pub unsafe fn compose_unchecked(ptr: NonNull<T>, tag: usize) -> Self {
         Self::new_unchecked(MarkedPtr::compose(ptr.as_ptr(), tag))
     }
 
-    /// Returns the inner pointer *as is*, meaning any potential tag is not
+    /// Returns the inner pointer *as is*, meaning any potential tag is **not**
     /// stripped.
     ///
     /// De-referencing the returned pointer results in undefined behaviour, if
@@ -137,7 +142,7 @@ impl<T, const N: usize> MarkedNonNull<T, N> {
     /// Use e.g. [`decompose`][MarkedNonNull::decompose] instead to get the
     /// actual pointer without the tag.
     #[inline]
-    pub const fn into_non_null(self) -> NonNull<T> {
+    pub const fn into_raw(self) -> NonNull<T> {
         self.inner
     }
 
@@ -148,34 +153,42 @@ impl<T, const N: usize> MarkedNonNull<T, N> {
     }
 
     /// Cast to a pointer of another type.
+    ///
+    /// # Panics
+    ///
+    /// This method **panics** if the desired type `U` does not fulfill the
+    /// alignment requirements for storing `N` tag bits.
     #[inline]
     pub fn cast<U>(self) -> MarkedNonNull<U, N> {
         crate::assert_alignment::<U, N>();
         MarkedNonNull { inner: self.inner.cast() }
     }
 
+    /// Returns the numeric (integer) representation of the pointer with its
+    /// tag.
     #[inline]
     pub fn into_usize(self) -> usize {
         self.inner.as_ptr() as usize
     }
 
-    /// Clears the tag from `self` and returns the same pointer stripped of its
-    /// tag value.
+    /// Clears the tag from `self` and returns the same pointer but stripped of
+    /// its tag value.
     #[inline]
     pub fn clear_tag(self) -> Self {
         let clear = crate::decompose_ptr::<T>(self.inner.as_ptr() as usize, Self::MARK_BITS);
         Self { inner: unsafe { NonNull::new_unchecked(clear) } }
     }
 
-    /// Splits the tag from `self` and returns the same pointer stripped of its
-    /// tag value and the separated tag.
+    /// Splits the tag from `self` and returns the same pointer but stripped of
+    /// its tag value and the separated tag.
     #[inline]
     pub fn split_tag(self) -> (Self, usize) {
         let (inner, tag) = self.decompose();
         (Self { inner }, tag)
     }
 
-    /// Clears the tag value from `self` and replaces it with `tag`.
+    /// Clears the tag from `self` and returns the same pointer but with the
+    /// previous tag replaced with `tag`.
     #[inline]
     pub fn set_tag(self, tag: usize) -> Self {
         Self::compose(self.decompose_non_null(), tag)
@@ -359,11 +372,7 @@ impl<T, const N: usize> MarkedNonNull<T, N> {
 /********** impl Debug ****************************************************************************/
 
 impl<T, const N: usize> fmt::Debug for MarkedNonNull<T, N> {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let (ptr, tag) = self.decompose();
-        f.debug_struct("MarkedNonNull").field("ptr", &ptr).field("tag", &tag).finish()
-    }
+    impl_debug!("MarkedNonNull");
 }
 
 /********** impl Pointer **************************************************************************/

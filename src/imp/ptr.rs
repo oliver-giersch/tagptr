@@ -3,69 +3,48 @@
 use core::cmp;
 use core::fmt;
 use core::hash::{Hash, Hasher};
+use core::marker::PhantomData;
 use core::ptr::{self, NonNull};
 
 use crate::{MarkedNonNull, MarkedPtr};
 
 /********** impl Clone ****************************************************************************/
 
-impl<T, const N: usize> Clone for MarkedPtr<T, N> {
-    #[inline]
-    fn clone(&self) -> Self {
-        Self { inner: self.inner }
-    }
+impl<T, N> Clone for MarkedPtr<T, N> {
+    impl_ptr_clone!();
 }
 
 /********** impl Copy *****************************************************************************/
 
-impl<T, const N: usize> Copy for MarkedPtr<T, N> {}
+impl<T, N> Copy for MarkedPtr<T, N> {}
+
+/********** impl inherent (const) *****************************************************************/
+
+impl<T, N> MarkedPtr<T, N> {
+    impl_ptr_const!(MarkedPtr);
+}
 
 /********** impl inherent *************************************************************************/
 
+// calculate_tag_bits(...) -> usize {}
+// compose() -> Self
+// decompose_ptr() -> *mut T
+// decompose_tag() -> usize
+
 impl<T, const N: usize> MarkedPtr<T, N> {
-    /// The number of available mark bits for this type.
+    /// The number of available tag bits for this type.
     pub const TAG_BITS: usize = N;
-    /// The bitmask for the lower markable bits.
+    /// The bitmask for the lower bits available for storing the tag value.
     pub const TAG_MASK: usize = crate::mark_mask::<T>(Self::TAG_BITS);
-    /// The bitmask for the (higher) pointer bits.
+    /// The bitmask for the (higher) bits for storing the pointer itself.
     pub const POINTER_MASK: usize = !Self::TAG_MASK;
-
-    /// Creates a new unmarked `null` pointer.
-    #[inline]
-    pub const fn null() -> Self {
-        Self::new(ptr::null_mut())
-    }
-
-    /// Creates a new unmarked [`MarkedPtr`].
-    #[inline]
-    pub const fn new(ptr: *mut T) -> Self {
-        Self { inner: ptr }
-    }
-
-    /// Creates a [`MarkedPtr`] from the integer (numeric) representation of a
-    /// potentially marked pointer.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use core::ptr;
-    ///
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 1>;
-    ///
-    /// let ptr = MarkedPtr::from_usize(1);
-    /// assert_eq!(ptr.decompose(), (ptr::null_mut(), 1));
-    /// ```
-    #[inline]
-    pub const fn from_usize(val: usize) -> Self {
-        Self { inner: val as *mut _ }
-    }
 
     /// Composes a new [`MarkedPtr`] from a raw `ptr` and a `tag` value.
     ///
     /// The supplied `ptr` is assumed to be well-aligned (i.e. has no tag bits
     /// set), so this function may lead to unexpected results when this is not
-    /// the case. 
-    /// 
+    /// the case.
+    ///
     /// # Examples
     ///
     /// ```
@@ -86,40 +65,26 @@ impl<T, const N: usize> MarkedPtr<T, N> {
         Self::new(crate::compose(ptr, tag, Self::TAG_BITS))
     }
 
-    /// Returns the inner pointer *as is*, meaning any potential tag is **not**
-    /// stripped.
+    /// Returns `true` if the [`MarkedPtr`] is `null`.
     ///
-    /// De-referencing the returned pointer results in undefined behaviour, if
-    /// the pointer is still marked and even if the pointer itself points to a
-    /// valid and live value.
-    #[inline]
-    pub const fn into_ptr(self) -> *mut T {
-        self.inner
-    }
-
-    /// Cast to a pointer of another type.
-    #[inline]
-    pub fn cast<U>(self) -> MarkedPtr<U, N> {
-        crate::assert_alignment::<U, N>();
-        MarkedPtr { inner: self.inner.cast() }
-    }
-
-    /// Returns the integer representation of the pointer with its tag.
-    #[inline]
-    pub fn into_usize(self) -> usize {
-        self.inner as usize
-    }
-
-    /// Returns `true` if the [`MarkedPtr`] is null.
+    /// # Examples
     ///
-    /// This is equivalent to calling `marked_ptr.decompose_ptr().is_null()`.
+    /// ```
+    /// use core::ptr;
+    ///
+    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 1>;
+    ///
+    /// // a `null` pointer with tag bits is still considered to be `null`.
+    /// let ptr = MarkedPtr::compose(ptr::null_mut(), 0b1);
+    /// assert!(ptr.is_null())
+    /// ```
     #[inline]
     pub fn is_null(self) -> bool {
         self.decompose_ptr().is_null()
     }
 
     /// Clears the tag from `self` and returns the same pointer but stripped of
-    /// its mark bits.
+    /// its tag value.
     ///
     /// # Examples
     ///
@@ -137,13 +102,26 @@ impl<T, const N: usize> MarkedPtr<T, N> {
         Self::new(self.decompose_ptr())
     }
 
+    /// Splits the tag from `self` and returns the same pointer but stripped of
+    /// its tag value and the separated tag.
+    ///
+    /// ```
+    /// use core::ptr;
+    ///
+    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+    ///
+    /// let raw = &1 as *const i32 as *mut i32;
+    /// let ptr = MarkedPtr::compose(raw, 0b11);
+    /// assert_eq!(ptr.split_tag(), (MarkedPtr::new(raw), 0b11));
+    /// ```
     #[inline]
     pub fn split_tag(self) -> (Self, usize) {
         let (ptr, tag) = self.decompose();
         (Self::new(ptr), tag)
     }
 
-    /// Clears the tag from `self` and replaces it with `tag`.
+    /// Clears the tag from `self` and returns the same pointer but with the
+    /// previous tag replaced with `tag`.
     ///
     /// # Examples
     ///
@@ -161,8 +139,9 @@ impl<T, const N: usize> MarkedPtr<T, N> {
         Self::compose(self.decompose_ptr(), tag)
     }
 
-    /// Updates the tag of `self` with `func` and returns the pointer with the
-    /// updated tag.
+    /// Updates the tag value of `self` using `func`, which receives the current
+    /// tag value as argument and returns the same pointer with the updated tag
+    /// value.
     ///
     /// # Examples
     ///
@@ -179,7 +158,7 @@ impl<T, const N: usize> MarkedPtr<T, N> {
         Self::compose(ptr, func(tag))
     }
 
-    /// Adds `value` to the current tag without regard for the previous value.
+    /// Adds `value` to the current tag *without* regard for the previous value.
     ///
     /// This method does not perform any checks, so it may overflow the tag
     /// bits, result in a pointer to a different value, a null pointer or an
@@ -189,7 +168,7 @@ impl<T, const N: usize> MarkedPtr<T, N> {
         Self::from_usize(self.into_usize() + value)
     }
 
-    /// Subtracts `value` to the current tag without regard for the previous
+    /// Subtracts `value` from the current tag *without* regard for the previous
     /// value.
     ///
     /// This method does not perform any checks, so it may underflow the tag
@@ -279,60 +258,37 @@ impl<T, const N: usize> MarkedPtr<T, N> {
     #[inline]
     pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
         self.decompose_ptr().as_mut()
-    }    
-}
-
-/********** impl Default **************************************************************************/
-
-impl<T, const N: usize> Default for MarkedPtr<T, N> {
-    fn default() -> Self {
-        Self::null()
     }
 }
 
 /********** impl From (*mut T) ********************************************************************/
 
 impl<T, const N: usize> From<*mut T> for MarkedPtr<T, N> {
-    #[inline]
-    fn from(ptr: *mut T) -> Self {
-        Self::new(ptr)
-    }
+    impl_from_raw!(*mut T);
 }
 
 /********** impl From (*const T) ******************************************************************/
 
 impl<T, const N: usize> From<*const T> for MarkedPtr<T, N> {
-    #[inline]
-    fn from(ptr: *const T) -> Self {
-        Self::new(ptr as *mut _)
-    }
+    impl_from_raw!(*const T);
 }
 
 /********** impl From (&T) ************************************************************************/
 
 impl<T, const N: usize> From<&T> for MarkedPtr<T, N> {
-    #[inline]
-    fn from(reference: &T) -> Self {
-        Self::from(reference as *const _)
-    }
+    impl_from_reference!(&T);
 }
 
 /********** impl From (&mut T) ********************************************************************/
 
 impl<T, const N: usize> From<&mut T> for MarkedPtr<T, N> {
-    #[inline]
-    fn from(reference: &mut T) -> Self {
-        Self::new(reference)
-    }
+    impl_from_reference!(&mut T);
 }
 
 /********** impl From (NonNull) *******************************************************************/
 
 impl<T, const N: usize> From<NonNull<T>> for MarkedPtr<T, N> {
-    #[inline]
-    fn from(non_null: NonNull<T>) -> Self {
-        Self::new(non_null.as_ptr())
-    }
+    impl_from_non_null!();
 }
 
 /********** impl From (MarkedNonNull) *************************************************************/
@@ -347,13 +303,13 @@ impl<T, const N: usize> From<MarkedNonNull<T, N>> for MarkedPtr<T, N> {
 /********** impl Debug ****************************************************************************/
 
 impl<T, const N: usize> fmt::Debug for MarkedPtr<T, N> {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("MarkedPtr")
-            .field("ptr", &self.decompose_ptr())
-            .field("tag", &self.decompose_tag())
-            .finish()
-    }
+    impl_debug!("MarkedPtr");
+}
+
+/********** impl Default **************************************************************************/
+
+impl<T, const N: usize> Default for MarkedPtr<T, N> {
+    impl_default!();
 }
 
 /********** impl Pointer **************************************************************************/
@@ -458,11 +414,11 @@ mod tests {
     fn clear_tag() {
         let raw = &mut 1 as *mut i32;
         let ptr = MarkedPtr::compose(raw, 0);
-        assert_eq!(ptr.clear_tag().into_ptr(), raw);
+        assert_eq!(ptr.clear_tag().into_raw(), raw);
         assert_eq!(ptr.clear_tag().decompose(), (raw, 0));
 
         let ptr = MarkedPtr::compose(raw, 0b11);
-        assert_eq!(ptr.clear_tag().into_ptr(), raw);
+        assert_eq!(ptr.clear_tag().into_raw(), raw);
         assert_eq!(ptr.clear_tag().decompose(), (raw, 0));
     }
 
@@ -476,8 +432,8 @@ mod tests {
         assert_eq!(marked_ptr.set_tag(0b1), MarkedPtr::compose(raw, 0b1));
         assert_eq!(unmarked.set_tag(0b101), MarkedPtr::compose(raw, 0b1));
         assert_eq!(marked_ptr.set_tag(0b101), MarkedPtr::compose(raw, 0b1));
-        assert_eq!(unmarked.set_tag(0).into_ptr(), raw);
-        assert_eq!(marked_ptr.set_tag(0).into_ptr(), raw);
+        assert_eq!(unmarked.set_tag(0).into_raw(), raw);
+        assert_eq!(marked_ptr.set_tag(0).into_raw(), raw);
     }
 
     #[test]
