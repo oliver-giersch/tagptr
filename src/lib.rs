@@ -1,48 +1,28 @@
-//! Strongly typed pointers with reserved bits for storing additional bit
-//! patterns within a single pointer-width word.
-
-#![feature(const_generics)]
 #![no_std]
-#![warn(missing_docs)]
-#![cfg_attr(all(target_arch = "x86_64", feature = "nightly"), feature(stdsimd))]
 
 #[macro_use]
 mod macros;
 
 // this module relies on 48-bit virtual addresses and thus explicitly names each
 // supported architecture with this property.
-#[cfg(any(target_arch = "x86_64", target_arch = "powerpc64", target_arch = "aarch64"))]
+#[cfg(any(
+    target_arch = "x86_64",
+    target_arch = "powerpc64",
+    target_arch = "aarch64"
+))]
 pub mod arch64;
 
-mod atomic;
 mod imp;
 
 use core::marker::PhantomData;
 use core::mem;
-use core::ptr::NonNull;
+use core::ptr::{self, NonNull};
 use core::sync::atomic::AtomicUsize;
 
 // public re-export
 pub use typenum;
+
 use typenum::Unsigned;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-// AtomicMarkedPtr
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/// A raw pointer type which can be safely shared between threads and which
-/// can store additional information in its lower (unused) bits.
-///
-/// This type has the same in-memory representation as a `*mut T`. It is mostly
-/// identical to [`AtomicPtr`][atomic], except that all of its methods involve
-/// a [`MarkedPtr`] instead of `*mut T`.
-///
-/// [atomic]: core::sync::atomic::AtomicPtr
-#[repr(transparent)]
-pub struct AtomicMarkedPtr<T, N> {
-    inner: AtomicUsize,
-    _marker: PhantomData<(*mut T, N)>,
-}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // MarkedPtr
@@ -59,29 +39,6 @@ pub struct AtomicMarkedPtr<T, N> {
 #[repr(transparent)]
 pub struct MarkedPtr<T, N> {
     inner: *mut T,
-    _marker: PhantomData<N>,
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-// MarkedNonNull
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/// A non-nullable marked raw pointer type like [`NonNull`].
-///
-/// # Invariants
-///
-/// Unlike [`NonNull`] this type does not permit values that would be `null`
-/// pointers if its first `N` bits are interpreted as tag.
-/// For instance, a pointer value `0x1`, despite not pointing at valid memory,
-/// is still valid for constructing a [`NonNull`] value.
-/// For any `N > 0`, however, this value is not a valid [`MarkedNonNull`], since
-/// it would be interpreted as a `null` pointer with a tag value of `1`.
-/// For regular, well-aligned pointers, this is usually not an issue and the
-/// type enforces at compile-time that no value `N` can be instantiated that
-/// exceeds `T`'s inherent alignment.
-#[repr(transparent)]
-pub struct MarkedNonNull<T, N> {
-    inner: NonNull<T>,
     _marker: PhantomData<N>,
 }
 
@@ -119,13 +76,6 @@ pub fn assert_alignment<T, N: Unsigned>() {
 }
 
 /********** internal helper functions *************************************************************/
-
-/// Decomposes the integer representation of a `marked_ptr` for a given number
-/// of `tag_bits` into a raw pointer and a separated tag value.
-#[inline]
-const fn decompose<T>(marked_ptr: usize, tag_bits: usize) -> (*mut T, usize) {
-    (decompose_ptr::<T>(marked_ptr, tag_bits), decompose_tag::<T>(marked_ptr, tag_bits))
-}
 
 /// Decomposes the integer representation of a `marked_ptr` for a given number
 /// of `tag_bits` into only a raw pointer.
