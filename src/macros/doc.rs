@@ -79,10 +79,23 @@ macro_rules! doc_is_null {
 }
 
 macro_rules! doc_clear_tag {
+    (non-null $example_type_path:path) => {
+        concat!(
+            doc_clear_tag!(),
+            "# Examples\n\n\
+            ```\nuse core::ptr::NonNull;\n\n\
+            type MarkedNonNull = ",
+            stringify!($example_type_path),
+            ";\n\n\
+            let reference = &mut 1;\n\
+            let ptr = MarkedNonNull::compose(NonNull::from(reference), 0b11);\n\
+            assert_eq!(ptr.clear_tag(), MarkedNonNull::from(reference));\n```"
+        )
+    };
     ($example_type_path:path) => {
         concat!(
-            "Clears the marked pointer's tag value.\n\n\
-            # Examples\n\n\
+            doc_clear_tag!(),
+            "# Examples\n\n\
             ```\nuse core::ptr;\n\n\
             type MarkedPtr = ",
             stringify!($example_type_path),
@@ -91,6 +104,9 @@ macro_rules! doc_clear_tag {
             let ptr = MarkedPtr::compose(reference, 0b11);\n\
             assert_eq!(ptr.clear_tag(), MarkedPtr::new(reference));\n```"
         )
+    };
+    () => {
+        "Clears the marked pointer's tag value.\n\n"
     };
 }
 
@@ -128,10 +144,6 @@ macro_rules! doc_set_tag {
 }
 
 macro_rules! doc_update_tag {
-    () => {
-        "Updates the marked pointer's tag value to the result of `func`, which is called with the \
-        current tag value."
-    };
     ($example_type_path:path) => {
         concat!(
             "Updates the marked pointer's tag value to the result of `func`, which is called with \
@@ -194,9 +206,10 @@ macro_rules! doc_as_mut {
 macro_rules! doc_decompose_ref {
     ($ty_ident:ident) => {
         concat!(
-            "Decomposes the marked pointer, returning an optional reference and the separated tag.\n\n\
+            "Decomposes the marked pointer, returning a reference and the separated tag.\n\n\
             # Safety\n\n\
-            The same safety caveats as with [`as_ref`][", stringify!($ty_ident),
+            The same safety caveats as with [`as_ref`][",
+            stringify!($ty_ident),
             "::as_ref] apply."
         )
     };
@@ -205,7 +218,7 @@ macro_rules! doc_decompose_ref {
 macro_rules! doc_decompose_mut {
     ($ty_ident:ident) => {
         concat!(
-            "Decomposes the marked pointer, returning an optional *mutable* reference and the \
+            "Decomposes the marked pointer, returning a *mutable* reference and the \
             separated tag.\n\n\
             # Safety\n\n\
             The same safety caveats as with [`as_ref`][",
@@ -224,6 +237,12 @@ macro_rules! doc_decompose {
 macro_rules! doc_decompose_ptr {
     () => {
         "Decomposes the marked ptr, returning only the separated raw pointer."
+    };
+}
+
+macro_rules! doc_decompose_non_null {
+    () => {
+        "Decomposes the marked ptr, returning only the separated raw [`NonNull`] pointer."
     };
 }
 

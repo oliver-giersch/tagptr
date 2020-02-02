@@ -43,6 +43,29 @@ pub struct MarkedPtr<T, N> {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// MarkedNonNull
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// A non-nullable marked raw pointer type like [`NonNull`].
+///
+/// # Invariants
+///
+/// Unlike [`NonNull`] this type does not permit values that would be `null`
+/// pointers if its first `N` bits are interpreted as tag.
+/// For instance, a pointer value `0x1`, despite not pointing at valid memory,
+/// is still valid for constructing a [`NonNull`] value.
+/// For any `N > 0`, however, this value is not a valid [`MarkedNonNull`], since
+/// it would be interpreted as a `null` pointer with a tag value of `1`.
+/// For regular, well-aligned pointers, this is usually not an issue and the
+/// type enforces at compile-time that no value `N` can be instantiated that
+/// exceeds `T`'s inherent alignment.
+#[repr(transparent)]
+pub struct MarkedNonNull<T, N> {
+    inner: NonNull<T>,
+    _marker: PhantomData<N>,
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // Null
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

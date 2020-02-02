@@ -1,10 +1,28 @@
+mod dwcas;
+
 use core::cmp;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::marker::PhantomData;
 use core::ptr::{self, NonNull};
+use core::sync::atomic::AtomicUsize;
 
-mod dwcas;
+use crate::Null;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// AtomicMarkedPtr64
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[repr(transparent)]
+pub struct AtomicMarkedPtr64<T> {
+    inner: AtomicUsize,
+    _marker: PhantomData<*mut T>,
+}
+
+/********** impl Send + Sync **********************************************************************/
+
+unsafe impl<T> Send for AtomicMarkedPtr64<T> {}
+unsafe impl<T> Sync for AtomicMarkedPtr64<T> {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // MarkedPtr64
@@ -29,11 +47,7 @@ impl<T> Copy for MarkedPtr64<T> {}
 /********** impl inherent *************************************************************************/
 
 impl<T> MarkedPtr64<T> {
-    impl_constants!(
-        tag_bits = 16,
-        tag_type = u16,
-        tag_mask = 0xFFFF << Self::TAG_SHIFT
-    );
+    impl_constants!(tag_bits = 16, tag_type = u16, tag_mask = 0xFFFF << Self::TAG_SHIFT);
 
     const TAG_SHIFT: usize = 48;
 
@@ -165,4 +179,65 @@ impl<T> Hash for MarkedPtr64<T> {
 pub struct MarkedNonNull64<T> {
     inner: NonNull<T>,
     _marker: PhantomData<()>,
+}
+
+/********** impl Clone ****************************************************************************/
+
+impl<T> Clone for MarkedNonNull64<T> {
+    impl_clone!();
+}
+
+/********** impl Copy *****************************************************************************/
+
+impl<T> Copy for MarkedNonNull64<T> {}
+
+/********** impl inherent *************************************************************************/
+
+impl<T> MarkedNonNull64<T> {
+    impl_constants!(tag_bits = 16, tag_type = u16, tag_mask = 0xFFFF << Self::TAG_SHIFT);
+
+    const TAG_SHIFT: usize = 48;
+
+    impl_non_null_inherent_const!(ptr_type = MarkedPtr64<T>, ptr_ident = MarkedPtr64);
+    impl_non_null_inherent!(
+        self_ident = MarkedNonNull64,
+        ptr_type = MarkedPtr64<T>,
+        tag_type = u16,
+        example_type_path = conquer_pointer::arch64::MarkedNonNull64<T>
+    );
+
+    #[inline]
+    pub fn compose(ptr: NonNull<T>, tag: u16) -> Self {
+        todo!()
+    }
+
+    doc_comment! {
+        doc_decompose_ptr!(),
+        #[inline]
+        pub fn decompose_ptr(self) -> *mut T {
+            todo!()
+        }
+    }
+
+    doc_comment! {
+        doc_decompose_non_null!(),
+        #[inline]
+        pub fn decompose_non_null(self) -> NonNull<T> {
+            todo!()
+        }
+    }
+
+    doc_comment! {
+        doc_decompose_tag!(),
+        #[inline]
+        pub fn decompose_tag(self) -> u16 {
+            todo!()
+        }
+    }
+}
+
+/********** impl Debug ****************************************************************************/
+
+impl<T> fmt::Debug for MarkedNonNull64<T> {
+    impl_debug!("MarkedNonNull64");
 }
