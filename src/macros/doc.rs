@@ -1,3 +1,5 @@
+/// Collection of macros for generating documentation.
+
 /// A macro for generating arbitrary documented code items
 macro_rules! doc_comment {
     ($docs:expr, $($item:tt)*) => {
@@ -6,7 +8,7 @@ macro_rules! doc_comment {
     };
 }
 
-/*********** various macros for generating documentation for duplicated functions *****************/
+/********** various macros for generating documentation for constants *****************************/
 
 macro_rules! doc_tag_bits {
     () => {
@@ -26,6 +28,8 @@ macro_rules! doc_ptr_mask {
     };
 }
 
+/********** various macros for generating documentation for functions *****************************/
+
 macro_rules! doc_null {
     ($example_type_path:path) => {
         concat!(
@@ -38,6 +42,24 @@ macro_rules! doc_null {
             let ptr = MarkedPtr::null();\n\
             assert_eq!(ptr.decompose(), (ptr::null_mut(), 0));\n```"
         )
+    };
+}
+
+macro_rules! doc_from_usize {
+    () => {
+        "Creates a new pointer from the numeric (integer) representation of a potentially marked pointer."
+    };
+}
+
+macro_rules! doc_into_raw {
+    () => {
+        "Returns the internal representation of the pointer *as is*, i.e. any potential tag value is **not** stripped."
+    };
+}
+
+macro_rules! doc_into_usize {
+    () => {
+        "Returns the numeric (integer) representation of the pointer with its tag value."
     };
 }
 

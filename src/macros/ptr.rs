@@ -1,45 +1,48 @@
 macro_rules! impl_ptr_inherent_const {
-(
+    (
     ptr_type = $ptr_type:ident,
     example_type_path = $example_type_path:path
 ) => {
-    doc_comment! {
-        doc_null!($example_type_path),
-        #[inline]
-        pub const fn null() -> Self {
-            Self::new(ptr::null_mut())
+        doc_comment! {
+            doc_null!($example_type_path),
+            #[inline]
+            pub const fn null() -> Self {
+                Self::new(ptr::null_mut())
+            }
         }
-    }
 
-    doc_comment! {
-        doc_new!($example_type_path),
-        #[inline]
-        pub const fn new(ptr: *mut T) -> Self {
-            Self { inner: ptr, _marker: PhantomData }
+        doc_comment! {
+            doc_new!($example_type_path),
+            #[inline]
+            pub const fn new(ptr: *mut T) -> Self {
+                Self { inner: ptr, _marker: PhantomData }
+            }
         }
-    }
 
-    /// Creates a new pointer from the numeric (integer) representation of a
-    /// potentially marked pointer.
-    #[inline]
-    pub const fn from_usize(val: usize) -> Self {
-        Self::new(val as _)
-    }
+        doc_comment! {
+            doc_from_usize!(),
+            #[inline]
+            pub const fn from_usize(val: usize) -> Self {
+                Self::new(val as _)
+            }
+        }
 
-    /// Returns the internal representation of the pointer *as is*, i.e. any
-    /// potential tag value is **not** stripped.
-    #[inline]
-    pub const fn into_raw(self) -> *mut T {
-        self.inner
-    }
+        doc_comment! {
+            doc_into_raw!(),
+            #[inline]
+            pub const fn into_raw(self) -> *mut T {
+                self.inner
+            }
+        }
 
-    /// Returns the numeric (integer) representation of the pointer with its tag
-    /// value.
-    #[inline]
-    pub fn into_usize(self) -> usize {
-        self.inner as usize
-    }
-};
+        doc_comment! {
+            doc_into_usize!(),
+            #[inline]
+            pub fn into_usize(self) -> usize {
+                self.inner as usize
+            }
+        }
+    };
 }
 
 /// A macro for implementing non-const (trait bound) inherent methods and constants for marked

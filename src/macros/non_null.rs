@@ -17,14 +17,24 @@ macro_rules! impl_non_null_inherent_const {
             }
         }
 
-        #[inline]
-        pub const unsafe fn from_usize(val: usize) -> Self {
-            Self { inner: NonNull::new_unchecked(val as *mut _), _marker: PhantomData }
+        doc_comment! {
+            doc_from_usize!(),
+            /// Safety
+            ///
+            /// The caller has to ensure that `val` represents neither a marked nor an unmarked
+            /// `null` pointer.
+            #[inline]
+            pub const unsafe fn from_usize(val: usize) -> Self {
+                Self { inner: NonNull::new_unchecked(val as *mut _), _marker: PhantomData }
+            }
         }
 
-        #[inline]
-        pub const fn into_raw(self) -> NonNull<T> {
-            self.inner
+        doc_comment! {
+            doc_into_raw!(),
+            #[inline]
+            pub const fn into_raw(self) -> NonNull<T> {
+                self.inner
+            }
         }
 
         #[inline]
@@ -32,9 +42,12 @@ macro_rules! impl_non_null_inherent_const {
             $ptr_ident::new(self.inner.as_ptr())
         }
 
-        #[inline]
-        pub fn into_usize(self) -> usize {
-            self.inner.as_ptr() as _
+        doc_comment! {
+            doc_into_usize!(),
+            #[inline]
+            pub fn into_usize(self) -> usize {
+                self.inner.as_ptr() as _
+            }
         }
     };
 }

@@ -199,6 +199,7 @@ impl<T> MarkedNonNull64<T> {
     const TAG_SHIFT: usize = 48;
 
     impl_non_null_inherent_const!(ptr_type = MarkedPtr64<T>, ptr_ident = MarkedPtr64);
+
     impl_non_null_inherent!(
         self_ident = MarkedNonNull64,
         ptr_type = MarkedPtr64<T>,
