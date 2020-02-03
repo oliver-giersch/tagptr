@@ -89,16 +89,6 @@ macro_rules! impl_non_null_inherent {
             (Self { inner, _marker: PhantomData }, tag)
         }
 
-        #[inline]
-        pub fn set_tag(self, tag: $tag_type) -> Self {
-            todo!()
-        }
-
-        #[inline]
-        pub fn update_tag(self, func: impl FnOnce($tag_type) -> $tag_type) -> Self {
-            todo!()
-        }
-
         doc_comment! {
             doc_add_tag!(),
             #[inline]

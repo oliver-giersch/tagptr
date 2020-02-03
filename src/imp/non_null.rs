@@ -47,12 +47,27 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
 
     #[inline]
     pub fn try_compose(ptr: NonNull<T>, tag: usize) -> Result<Self, Null> {
-        todo!()
+        match ptr.as_ptr() as usize & Self::POINTER_MASK {
+            0 => Ok(unsafe { Self::compose_unchecked(ptr, tag) }),
+            _ => Err(Null(ptr.as_ptr() as usize)),
+        }
     }
 
     #[inline]
     pub unsafe fn compose_unchecked(ptr: NonNull<T>, tag: usize) -> Self {
-        todo!()
+        Self::new_unchecked(MarkedPtr::compose(ptr.as_ptr(), tag))
+    }
+
+    #[inline]
+    pub fn set_tag(self, tag: usize) -> Self {
+        let ptr = self.decompose_non_null();
+        unsafe { Self::compose_unchecked(ptr, tag) }
+    }
+
+    #[inline]
+    pub fn update_tag(self, func: impl FnOnce(usize) -> usize) -> Self {
+        let (ptr, tag) = self.decompose();
+        unsafe { Self::compose_unchecked(ptr, func(tag)) }
     }
 
     doc_comment! {

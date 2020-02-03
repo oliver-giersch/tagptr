@@ -9,6 +9,15 @@ use core::sync::atomic::AtomicUsize;
 
 use crate::Null;
 
+pub(crate) const TAG_SHIFT: usize = 48;
+pub(crate) const TAG_BITS: u16 = 16;
+pub(crate) const TAG_MASK: usize = 0xFFFF << TAG_SHIFT;
+
+#[inline]
+pub(crate) fn compose<T>(ptr: *mut T, tag: u16) -> *mut T {
+    (ptr as usize | (tag as usize) << TAG_SHIFT) as *mut _
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // AtomicMarkedPtr64
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -68,7 +77,7 @@ impl<T> MarkedPtr64<T> {
         doc_compose!(),
         #[inline]
         pub fn compose(ptr: *mut T, tag: u16) -> Self {
-            Self::new((ptr as usize | (tag as usize) << Self::TAG_SHIFT) as *mut _)
+            Self::new(compose(ptr, tag))
         }
     }
 
@@ -194,12 +203,8 @@ impl<T> Copy for MarkedNonNull64<T> {}
 /********** impl inherent *************************************************************************/
 
 impl<T> MarkedNonNull64<T> {
-    impl_constants!(tag_bits = 16, tag_type = u16, tag_mask = 0xFFFF << Self::TAG_SHIFT);
-
-    const TAG_SHIFT: usize = 48;
-
+    impl_constants!(tag_bits = TAG_BITS, tag_type = u16, tag_mask = TAG_MASK);
     impl_non_null_inherent_const!(ptr_type = MarkedPtr64<T>, ptr_ident = MarkedPtr64);
-
     impl_non_null_inherent!(
         self_ident = MarkedNonNull64,
         ptr_type = MarkedPtr64<T>,
@@ -209,7 +214,21 @@ impl<T> MarkedNonNull64<T> {
 
     #[inline]
     pub fn compose(ptr: NonNull<T>, tag: u16) -> Self {
-        todo!()
+        Self {
+            inner: unsafe { NonNull::new_unchecked(compose(ptr.as_ptr(), tag)) },
+            _marker: PhantomData,
+        }
+    }
+
+    #[inline]
+    pub fn set_tag(self, tag: u16) -> Self {
+        Self::compose(self.decompose_non_null(), tag)
+    }
+
+    #[inline]
+    pub fn update_tag(self, func: impl FnOnce(u16) -> u16) -> Self {
+        let (ptr, tag) = self.decompose();
+        Self::compose(ptr, func(tag))
     }
 
     doc_comment! {
