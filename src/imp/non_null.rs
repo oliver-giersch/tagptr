@@ -20,6 +20,14 @@ impl<T, N> Copy for MarkedNonNull<T, N> {}
 
 impl<T, N> MarkedNonNull<T, N> {
     impl_non_null_inherent_const!(ptr_type = MarkedPtr<T, N>, ptr_ident = MarkedPtr);
+
+    doc_comment! {
+        doc_dangling!(),
+        #[inline]
+        pub fn dangling() -> Self {
+            todo!()
+        }
+    }
 }
 
 /********** impl inherent *************************************************************************/

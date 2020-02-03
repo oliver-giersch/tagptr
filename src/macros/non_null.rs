@@ -59,34 +59,33 @@ macro_rules! impl_non_null_inherent {
         tag_type = $tag_type:ty,
         example_type_path = $example_type_path:path
     ) => {
-        /// Creates a new dangling but well aligned pointer.
-        #[inline]
-        pub fn dangling() -> Self {
-            todo!()
-        }
-
         /// Creates a new non-null pointer from `marked_ptr`.
         ///
         /// # Errors
         ///
-        /// ...
+        /// This function fails if `marked_ptr` is `null` in which case a
+        /// [`Null`] instance is returned containing argument pointer's tag
+        /// value.
         #[inline]
         pub fn new(marked_ptr: $ptr_type) -> Result<Self, Null> {
             todo!()
         }
 
         doc_comment! {
-            doc_clear_tag!(non-null $example_type_path),
+            doc_clear_tag!("non-null" $example_type_path),
             #[inline]
             pub fn clear_tag(self) -> Self {
                 Self { inner: self.decompose_non_null(), _marker: PhantomData }
             }
         }
 
-        #[inline]
-        pub fn split_tag(self) -> (Self, $tag_type) {
-            let (inner, tag) = self.decompose();
-            (Self { inner, _marker: PhantomData }, tag)
+        doc_comment! {
+            doc_split_tag!("non-null" $example_type_path),
+            #[inline]
+            pub fn split_tag(self) -> (Self, $tag_type) {
+                let (inner, tag) = self.decompose();
+                (Self { inner, _marker: PhantomData }, tag)
+            }
         }
 
         doc_comment! {
@@ -114,7 +113,7 @@ macro_rules! impl_non_null_inherent {
         }
 
         doc_comment! {
-            doc_as_ref!(),
+            doc_as_ref!("bounded"),
             #[inline]
             pub unsafe fn as_ref(&self) -> &T {
                 &*self.decompose_non_null().as_ptr()
@@ -122,7 +121,7 @@ macro_rules! impl_non_null_inherent {
         }
 
         doc_comment! {
-            doc_as_ref!(),
+            doc_as_ref!("unbounded"),
             #[inline]
             pub unsafe fn as_ref_unbounded<'a>(self) -> &'a T {
                 &*self.decompose_non_null().as_ptr()
@@ -162,5 +161,5 @@ macro_rules! impl_non_null_inherent {
                 (&mut *ptr.as_ptr(), tag)
             }
         }
-    }
+    };
 }

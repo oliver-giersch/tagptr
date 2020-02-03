@@ -205,6 +205,15 @@ impl<T> Copy for MarkedNonNull64<T> {}
 impl<T> MarkedNonNull64<T> {
     impl_constants!(tag_bits = TAG_BITS, tag_type = u16, tag_mask = TAG_MASK);
     impl_non_null_inherent_const!(ptr_type = MarkedPtr64<T>, ptr_ident = MarkedPtr64);
+
+    doc_comment! {
+        doc_dangling!(),
+        #[inline]
+        pub const fn dangling() -> Self {
+            Self { inner: NonNull::dangling(), _marker: PhantomData }
+        }
+    }
+
     impl_non_null_inherent!(
         self_ident = MarkedNonNull64,
         ptr_type = MarkedPtr64<T>,
@@ -212,11 +221,14 @@ impl<T> MarkedNonNull64<T> {
         example_type_path = conquer_pointer::arch64::MarkedNonNull64<T>
     );
 
-    #[inline]
-    pub fn compose(ptr: NonNull<T>, tag: u16) -> Self {
-        Self {
-            inner: unsafe { NonNull::new_unchecked(compose(ptr.as_ptr(), tag)) },
-            _marker: PhantomData,
+    doc_comment! {
+        doc_compose!(),
+        #[inline]
+        pub fn compose(ptr: NonNull<T>, tag: u16) -> Self {
+            Self {
+                inner: unsafe { NonNull::new_unchecked(compose(ptr.as_ptr(), tag)) },
+                _marker: PhantomData,
+            }
         }
     }
 

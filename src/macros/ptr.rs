@@ -121,7 +121,7 @@ macro_rules! impl_ptr_inherent {
         }
 
         doc_comment! {
-            doc_as_ref!(),
+            doc_as_ref!("unbounded"),
             #[inline]
             pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
                 self.decompose_ptr().as_ref()
