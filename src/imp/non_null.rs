@@ -39,7 +39,7 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
         tag_mask = crate::mark_mask::<T>(N::USIZE)
     );
 
-    const COMPOSE_ERR_MSG: &'static str = "argument `ptr` is mis-aligned for `N` tag bits (would be parsed as marked `null` pointer).";
+    const COMPOSE_ERR_MSG: &'static str = "argument `ptr` is mis-aligned for `N` tag bits and could be parsed as marked `null` pointer.";
 
     impl_non_null_inherent!(
         self_ident = MarkedNonNull,
@@ -48,11 +48,24 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
         example_type_path = conquer_pointer::MarkedNonNull<T, conquer_pointer::typenum::U2>
     );
 
-    #[inline]
-    pub fn compose(ptr: NonNull<T>, tag: usize) -> Self {
-        Self::try_compose(ptr, tag).expect(Self::COMPOSE_ERR_MSG)
+    doc_comment! {
+        doc_compose!(),
+        /// # Panics
+        ///
+        /// This function panics if `ptr` is mis-aligned for `N` tag bits and
+        /// could be parsed as a marked `null` pointer.
+        #[inline]
+        pub fn compose(ptr: NonNull<T>, tag: usize) -> Self {
+            Self::try_compose(ptr, tag).expect(Self::COMPOSE_ERR_MSG)
+        }
     }
 
+    /// Attempts to compose a new marked pointer from a raw `ptr` and a `tag`
+    /// value.
+    ///
+    /// # Errors
+    ///
+    /// This function fails if
     #[inline]
     pub fn try_compose(ptr: NonNull<T>, tag: usize) -> Result<Self, Null> {
         match ptr.as_ptr() as usize & Self::POINTER_MASK {

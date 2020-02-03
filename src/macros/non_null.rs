@@ -19,7 +19,7 @@ macro_rules! impl_non_null_inherent_const {
 
         doc_comment! {
             doc_from_usize!(),
-            /// Safety
+            /// # Safety
             ///
             /// The caller has to ensure that `val` represents neither a marked nor an unmarked
             /// `null` pointer.
@@ -90,6 +90,10 @@ macro_rules! impl_non_null_inherent {
 
         doc_comment! {
             doc_add_tag!(),
+            /// # Safety
+            ///
+            /// The caller has to ensure that the resulting pointer is not a
+            /// `null` pointer.
             #[inline]
             pub unsafe fn add_tag(self, value: usize) -> Self {
                 Self::from_usize(self.into_usize().wrapping_add(value))
@@ -98,6 +102,10 @@ macro_rules! impl_non_null_inherent {
 
         doc_comment! {
             doc_sub_tag!(),
+            /// # Safety
+            ///
+            /// The caller has to ensure that the resulting pointer is not a
+            /// `null` pointer.
             #[inline]
             pub unsafe fn sub_tag(self, value: usize) -> Self {
                 Self::from_usize(self.into_usize().wrapping_sub(value))
