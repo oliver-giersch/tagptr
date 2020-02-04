@@ -49,6 +49,18 @@ macro_rules! doc_null {
 }
 
 macro_rules! doc_from_usize {
+    ("nullable", $example_type_path:path) => {
+        concat!(
+            doc_from_usize!(),
+            "\n\n# Examples\n\n\
+            ```\nuse core::ptr;\n\n\
+            type MarkedPtr = ",
+            stringify!($example_type_path),
+            ";\n\n\
+            let ptr = MarkedPtr::from_usize(0b11);\n\
+            assert_eq!(ptr.decompose(), (ptr::null_mut(), 0b11));\n```"
+        )
+    };
     () => {
         "Creates a new pointer from the numeric (integer) representation of a potentially marked pointer."
     };
@@ -68,7 +80,7 @@ macro_rules! doc_into_usize {
 
 macro_rules! doc_dangling {
     () => {
-        "Creates a new dangling but well aligned pointer."
+        "Creates a new pointer that is dangling but well aligned."
     };
 }
 
@@ -96,8 +108,7 @@ macro_rules! doc_cast {
 
 macro_rules! doc_compose {
     () => {
-        "Composes a new marked pointer from a raw `ptr` and a `tag` value.\
-    
+        "Composes a new marked pointer from a raw `ptr` and a `tag` value.\n\n\
         The supplied `ptr` is assumed to be well-aligned (i.e. has no tag bits set) and calling \
         this function may lead to unexpected results when this is not the case."
     };
@@ -210,8 +221,7 @@ macro_rules! doc_update_tag {
 
 macro_rules! doc_add_tag {
     () => {
-        "Adds `value` to the current tag *without* regard for the previous value.\
-        \
+        "Adds `value` to the current tag *without* regard for the previous value.\n\n\
         This method does not perform any checks so it may silently overflow the tag bits, result \
         in a pointer to a different value, a null pointer or an unaligned pointer."
     };
@@ -219,8 +229,7 @@ macro_rules! doc_add_tag {
 
 macro_rules! doc_sub_tag {
     () => {
-        "Subtracts `value` from the current tag *without* regard for the previous value.\
-        \
+        "Subtracts `value` from the current tag *without* regard for the previous value.\n\n\
         This method does not perform any checks so it may silently overflow the tag bits, result \
         in a pointer to a different value, a null pointer or an unaligned pointer."
     };
@@ -248,37 +257,37 @@ macro_rules! doc_as_ref {
 }
 
 macro_rules! doc_as_mut {
-    ($ty_ident:ident) => {
+    ($self_ident:ident) => {
         concat!(
             "Decomposes the marked pointer, returning an optional *mutable* reference and discarding \
             the tag.\n\n\
             # Safety\n\n\
-            The same safety caveats as with [`as_ref`][", stringify!($ty_ident),
+            The same safety caveats as with [`as_ref`][", stringify!($self_ident),
             "::as_ref] apply."
         )
     }
 }
 
 macro_rules! doc_decompose_ref {
-    ($ty_ident:ident) => {
+    ($self_ident:ident) => {
         concat!(
             "Decomposes the marked pointer, returning a reference and the separated tag.\n\n\
             # Safety\n\n\
             The same safety caveats as with [`as_ref`][",
-            stringify!($ty_ident),
+            stringify!($self_ident),
             "::as_ref] apply."
         )
     };
 }
 
 macro_rules! doc_decompose_mut {
-    ($ty_ident:ident) => {
+    ($self_ident:ident) => {
         concat!(
             "Decomposes the marked pointer, returning a *mutable* reference and the \
             separated tag.\n\n\
             # Safety\n\n\
             The same safety caveats as with [`as_ref`][",
-            stringify!($ty_ident),
+            stringify!($self_ident),
             "::as_ref] apply."
         )
     };
@@ -286,24 +295,24 @@ macro_rules! doc_decompose_mut {
 
 macro_rules! doc_decompose {
     () => {
-        "Decomposes the marked pointer, returning the raw pointer and the tag value."
+        "Decomposes the marked pointer, returning the raw pointer and the separated tag value."
     };
 }
 
 macro_rules! doc_decompose_ptr {
     () => {
-        "Decomposes the marked ptr, returning only the separated raw pointer."
+        "Decomposes the marked pointer, returning only the separated raw pointer."
     };
 }
 
 macro_rules! doc_decompose_non_null {
     () => {
-        "Decomposes the marked ptr, returning only the separated raw [`NonNull`] pointer."
+        "Decomposes the marked pointer, returning only the separated raw [`NonNull`] pointer."
     };
 }
 
 macro_rules! doc_decompose_tag {
     () => {
-        "Decomposes the marked ptr, returning only the separated tag value."
+        "Decomposes the marked pointer, returning only the separated tag value."
     };
 }

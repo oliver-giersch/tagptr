@@ -44,9 +44,7 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
         /// ```
         /// use core::ptr;
         ///
-        /// use conquer_pointer::typenum::U2;
-        ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, conquer_pointer::typenum::U2>;
         ///
         /// let raw = &1 as *const i32 as *mut i32;
         /// let ptr = MarkedPtr::compose(raw, 0b11);

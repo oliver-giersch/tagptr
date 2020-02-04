@@ -4,11 +4,12 @@ macro_rules! impl_non_null_inherent_const {
         ptr_ident = $ptr_ident:ident
     ) => {
         /// Creates a new marked non-null pointer from `marked_ptr` without
-        /// checking for `null`.
+        /// checking if it is `null`.
         ///
         /// # Safety
         ///
-        /// The caller has to ensure that `marked_ptr` is not `null`.
+        /// The caller has to ensure that `marked_ptr` is not `null` (neither
+        /// marked nor unmarked).
         #[inline]
         pub const unsafe fn new_unchecked(marked_ptr: $ptr_type) -> Self {
             Self {
@@ -21,8 +22,8 @@ macro_rules! impl_non_null_inherent_const {
             doc_from_usize!(),
             /// # Safety
             ///
-            /// The caller has to ensure that `val` represents neither a marked nor an unmarked
-            /// `null` pointer.
+            /// The caller has to ensure that `val` does not represent `null` (
+            /// neither marked nor unmarked).
             #[inline]
             pub const unsafe fn from_usize(val: usize) -> Self {
                 Self { inner: NonNull::new_unchecked(val as *mut _), _marker: PhantomData }
@@ -37,6 +38,7 @@ macro_rules! impl_non_null_inherent_const {
             }
         }
 
+        /// Converts into a (nullable) marked pointer.
         #[inline]
         pub const fn into_marked_ptr(self) -> $ptr_type {
             $ptr_ident::new(self.inner.as_ptr())
@@ -92,8 +94,8 @@ macro_rules! impl_non_null_inherent {
             doc_add_tag!(),
             /// # Safety
             ///
-            /// The caller has to ensure that the resulting pointer is not a
-            /// `null` pointer.
+            /// The caller has to ensure that the resulting pointer is not
+            /// `null` (neither marked nor unmarked).
             #[inline]
             pub unsafe fn add_tag(self, value: usize) -> Self {
                 Self::from_usize(self.into_usize().wrapping_add(value))
@@ -104,8 +106,8 @@ macro_rules! impl_non_null_inherent {
             doc_sub_tag!(),
             /// # Safety
             ///
-            /// The caller has to ensure that the resulting pointer is not a
-            /// `null` pointer.
+            /// The caller has to ensure that the resulting pointer is not
+            /// `null` (neither marked nor unmarked).
             #[inline]
             pub unsafe fn sub_tag(self, value: usize) -> Self {
                 Self::from_usize(self.into_usize().wrapping_sub(value))

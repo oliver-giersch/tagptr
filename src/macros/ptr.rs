@@ -20,7 +20,7 @@ macro_rules! impl_ptr_inherent_const {
         }
 
         doc_comment! {
-            doc_from_usize!(),
+            doc_from_usize!("nullable", $example_type_path),
             #[inline]
             pub const fn from_usize(val: usize) -> Self {
                 Self::new(val as _)

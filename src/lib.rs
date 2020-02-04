@@ -5,11 +5,7 @@ mod macros;
 
 // this module relies on 48-bit virtual addresses and thus explicitly names each
 // supported architecture with this property.
-#[cfg(any(
-    target_arch = "x86_64",
-    target_arch = "powerpc64",
-    target_arch = "aarch64"
-))]
+#[cfg(any(target_arch = "x86_64", target_arch = "powerpc64", target_arch = "aarch64"))]
 pub mod arch64;
 
 mod imp;
@@ -23,6 +19,15 @@ use core::sync::atomic::AtomicUsize;
 pub use typenum;
 
 use typenum::Unsigned;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// AtomicMarkedPtr
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+pub struct AtomicMarkedPtr<T, N> {
+    inner: AtomicUsize,
+    _marker: PhantomData<(*mut T, N)>,
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // MarkedPtr
