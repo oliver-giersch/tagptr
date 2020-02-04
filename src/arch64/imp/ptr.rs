@@ -19,14 +19,15 @@ impl<T> Copy for MarkedPtr64<T> {}
 /********** impl inherent *************************************************************************/
 
 impl<T> MarkedPtr64<T> {
-    impl_constants!(tag_bits = 16, tag_type = u16, tag_mask = 0xFFFF << Self::TAG_SHIFT);
+    impl_constants!(
+        tag_bits = crate::arch64::TAG_BITS,
+        tag_type = u16,
+        tag_mask = crate::arch64::TAG_MASK
+    );
 
     const TAG_SHIFT: usize = 48;
 
-    impl_ptr_inherent_const!(
-        ptr_type = MarkedPtr64,
-        example_type_path = conquer_pointer::arch64::MarkedPtr64<i32>
-    );
+    impl_ptr_inherent_const!(example_type_path = conquer_pointer::arch64::MarkedPtr64<i32>);
 
     doc_comment! {
         doc_cast!(),

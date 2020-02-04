@@ -1,8 +1,5 @@
 macro_rules! impl_ptr_inherent_const {
-    (
-    ptr_type = $ptr_type:ident,
-    example_type_path = $example_type_path:path
-) => {
+    (example_type_path = $example_type_path:path) => {
         doc_comment! {
             doc_null!($example_type_path),
             #[inline]

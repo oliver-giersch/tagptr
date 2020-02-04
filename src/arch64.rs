@@ -1,25 +1,15 @@
 mod dwcas;
 mod imp;
 
-use core::cmp;
-use core::fmt;
-use core::hash::{Hash, Hasher};
 use core::marker::PhantomData;
-use core::ptr::{self, NonNull};
+use core::ptr::NonNull;
 use core::sync::atomic::AtomicUsize;
 
-use crate::Null;
+/********** constant(s) ***************************************************************************/
 
 const TAG_SHIFT: usize = 48;
 const TAG_BITS: u16 = 16;
 const TAG_MASK: usize = 0xFFFF << TAG_SHIFT;
-
-/********** helper function(s) ********************************************************************/
-
-#[inline]
-fn compose<T>(ptr: *mut T, tag: u16) -> *mut T {
-    (ptr as usize | (tag as usize) << TAG_SHIFT) as *mut _
-}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // AtomicMarkedPtr64
@@ -49,4 +39,11 @@ pub struct MarkedPtr64<T> {
 pub struct MarkedNonNull64<T> {
     inner: NonNull<T>,
     _marker: PhantomData<()>,
+}
+
+/********** helper function(s) ********************************************************************/
+
+#[inline]
+fn compose<T>(ptr: *mut T, tag: u16) -> *mut T {
+    (ptr as usize | (tag as usize) << TAG_SHIFT) as *mut _
 }

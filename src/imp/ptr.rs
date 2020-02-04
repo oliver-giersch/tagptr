@@ -22,7 +22,6 @@ impl<T, N> Copy for MarkedPtr<T, N> {}
 
 impl<T, N> MarkedPtr<T, N> {
     impl_ptr_inherent_const!(
-        ptr_type = MarkedPtr,
         example_type_path = conquer_pointer::MarkedPtr<i32, conquer_pointer::typenum::U2>
     );
 }
