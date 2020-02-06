@@ -1,8 +1,5 @@
 macro_rules! impl_ptr_inherent_const {
-    (
-    ptr_type = $ptr_type:ident,
-    example_type_path = $example_type_path:path
-) => {
+    (example_type_path = $example_type_path:path) => {
         doc_comment! {
             doc_null!($example_type_path),
             #[inline]
@@ -20,7 +17,7 @@ macro_rules! impl_ptr_inherent_const {
         }
 
         doc_comment! {
-            doc_from_usize!(),
+            doc_from_usize!("nullable", $example_type_path),
             #[inline]
             pub const fn from_usize(val: usize) -> Self {
                 Self::new(val as _)
@@ -121,7 +118,7 @@ macro_rules! impl_ptr_inherent {
         }
 
         doc_comment! {
-            doc_as_ref!(),
+            doc_as_ref!("unbounded"),
             #[inline]
             pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
                 self.decompose_ptr().as_ref()

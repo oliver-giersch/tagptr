@@ -20,6 +20,14 @@ impl<T, N> Copy for MarkedNonNull<T, N> {}
 
 impl<T, N> MarkedNonNull<T, N> {
     impl_non_null_inherent_const!(ptr_type = MarkedPtr<T, N>, ptr_ident = MarkedPtr);
+
+    doc_comment! {
+        doc_dangling!(),
+        #[inline]
+        pub fn dangling() -> Self {
+            todo!()
+        }
+    }
 }
 
 /********** impl inherent *************************************************************************/
@@ -31,7 +39,7 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
         tag_mask = crate::mark_mask::<T>(N::USIZE)
     );
 
-    const COMPOSE_ERR_MSG: &'static str = "argument `ptr` is mis-aligned for `N` tag bits (would be parsed as marked `null` pointer).";
+    const COMPOSE_ERR_MSG: &'static str = "argument `ptr` is mis-aligned for `N` tag bits and could be parsed as marked `null` pointer.";
 
     impl_non_null_inherent!(
         self_ident = MarkedNonNull,
@@ -40,19 +48,47 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
         example_type_path = conquer_pointer::MarkedNonNull<T, conquer_pointer::typenum::U2>
     );
 
-    #[inline]
-    pub fn compose(ptr: NonNull<T>, tag: usize) -> Self {
-        Self::try_compose(ptr, tag).expect(Self::COMPOSE_ERR_MSG)
+    doc_comment! {
+        doc_compose!(),
+        /// # Panics
+        ///
+        /// This function panics if `ptr` is mis-aligned for `N` tag bits and
+        /// could be parsed as a marked `null` pointer.
+        #[inline]
+        pub fn compose(ptr: NonNull<T>, tag: usize) -> Self {
+            Self::try_compose(ptr, tag).expect(Self::COMPOSE_ERR_MSG)
+        }
     }
 
+    /// Attempts to compose a new marked pointer from a raw `ptr` and a `tag`
+    /// value.
+    ///
+    /// # Errors
+    ///
+    /// This function fails if
     #[inline]
     pub fn try_compose(ptr: NonNull<T>, tag: usize) -> Result<Self, Null> {
-        todo!()
+        match ptr.as_ptr() as usize & Self::POINTER_MASK {
+            0 => Ok(unsafe { Self::compose_unchecked(ptr, tag) }),
+            _ => Err(Null(ptr.as_ptr() as usize)),
+        }
     }
 
     #[inline]
     pub unsafe fn compose_unchecked(ptr: NonNull<T>, tag: usize) -> Self {
-        todo!()
+        Self::new_unchecked(MarkedPtr::compose(ptr.as_ptr(), tag))
+    }
+
+    #[inline]
+    pub fn set_tag(self, tag: usize) -> Self {
+        let ptr = self.decompose_non_null();
+        unsafe { Self::compose_unchecked(ptr, tag) }
+    }
+
+    #[inline]
+    pub fn update_tag(self, func: impl FnOnce(usize) -> usize) -> Self {
+        let (ptr, tag) = self.decompose();
+        unsafe { Self::compose_unchecked(ptr, func(tag)) }
     }
 
     doc_comment! {

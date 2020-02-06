@@ -4,11 +4,12 @@ macro_rules! impl_non_null_inherent_const {
         ptr_ident = $ptr_ident:ident
     ) => {
         /// Creates a new marked non-null pointer from `marked_ptr` without
-        /// checking for `null`.
+        /// checking if it is `null`.
         ///
         /// # Safety
         ///
-        /// The caller has to ensure that `marked_ptr` is not `null`.
+        /// The caller has to ensure that `marked_ptr` is not `null` (neither
+        /// marked nor unmarked).
         #[inline]
         pub const unsafe fn new_unchecked(marked_ptr: $ptr_type) -> Self {
             Self {
@@ -19,10 +20,10 @@ macro_rules! impl_non_null_inherent_const {
 
         doc_comment! {
             doc_from_usize!(),
-            /// Safety
+            /// # Safety
             ///
-            /// The caller has to ensure that `val` represents neither a marked nor an unmarked
-            /// `null` pointer.
+            /// The caller has to ensure that `val` does not represent `null` (
+            /// neither marked nor unmarked).
             #[inline]
             pub const unsafe fn from_usize(val: usize) -> Self {
                 Self { inner: NonNull::new_unchecked(val as *mut _), _marker: PhantomData }
@@ -37,6 +38,7 @@ macro_rules! impl_non_null_inherent_const {
             }
         }
 
+        /// Converts into a (nullable) marked pointer.
         #[inline]
         pub const fn into_marked_ptr(self) -> $ptr_type {
             $ptr_ident::new(self.inner.as_ptr())
@@ -59,48 +61,41 @@ macro_rules! impl_non_null_inherent {
         tag_type = $tag_type:ty,
         example_type_path = $example_type_path:path
     ) => {
-        /// Creates a new dangling but well aligned pointer.
-        #[inline]
-        pub fn dangling() -> Self {
-            todo!()
-        }
-
         /// Creates a new non-null pointer from `marked_ptr`.
         ///
         /// # Errors
         ///
-        /// ...
+        /// This function fails if `marked_ptr` is `null` in which case a
+        /// [`Null`] instance is returned containing argument pointer's tag
+        /// value.
         #[inline]
         pub fn new(marked_ptr: $ptr_type) -> Result<Self, Null> {
             todo!()
         }
 
         doc_comment! {
-            doc_clear_tag!(non-null $example_type_path),
+            doc_clear_tag!("non-null" $example_type_path),
             #[inline]
             pub fn clear_tag(self) -> Self {
                 Self { inner: self.decompose_non_null(), _marker: PhantomData }
             }
         }
 
-        #[inline]
-        pub fn split_tag(self) -> (Self, $tag_type) {
-            let (inner, tag) = self.decompose();
-            (Self { inner, _marker: PhantomData }, tag)
-        }
-
-        #[inline]
-        pub fn set_tag(self, tag: $tag_type) -> Self {
-            todo!()
-        }
-
-        #[inline]
-        pub fn update_tag(self, func: impl FnOnce($tag_type) -> $tag_type) -> Self {
-            todo!()
+        doc_comment! {
+            doc_split_tag!("non-null" $example_type_path),
+            #[inline]
+            pub fn split_tag(self) -> (Self, $tag_type) {
+                let (inner, tag) = self.decompose();
+                (Self { inner, _marker: PhantomData }, tag)
+            }
         }
 
         doc_comment! {
             doc_add_tag!(),
+            /// # Safety
+            ///
+            /// The caller has to ensure that the resulting pointer is not
+            /// `null` (neither marked nor unmarked).
             #[inline]
             pub unsafe fn add_tag(self, value: usize) -> Self {
                 Self::from_usize(self.into_usize().wrapping_add(value))
@@ -109,6 +104,10 @@ macro_rules! impl_non_null_inherent {
 
         doc_comment! {
             doc_sub_tag!(),
+            /// # Safety
+            ///
+            /// The caller has to ensure that the resulting pointer is not
+            /// `null` (neither marked nor unmarked).
             #[inline]
             pub unsafe fn sub_tag(self, value: usize) -> Self {
                 Self::from_usize(self.into_usize().wrapping_sub(value))
@@ -124,7 +123,7 @@ macro_rules! impl_non_null_inherent {
         }
 
         doc_comment! {
-            doc_as_ref!(),
+            doc_as_ref!("bounded"),
             #[inline]
             pub unsafe fn as_ref(&self) -> &T {
                 &*self.decompose_non_null().as_ptr()
@@ -132,7 +131,7 @@ macro_rules! impl_non_null_inherent {
         }
 
         doc_comment! {
-            doc_as_ref!(),
+            doc_as_ref!("unbounded"),
             #[inline]
             pub unsafe fn as_ref_unbounded<'a>(self) -> &'a T {
                 &*self.decompose_non_null().as_ptr()
@@ -172,5 +171,5 @@ macro_rules! impl_non_null_inherent {
                 (&mut *ptr.as_ptr(), tag)
             }
         }
-    }
+    };
 }

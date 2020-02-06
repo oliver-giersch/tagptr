@@ -1,3 +1,10 @@
+//! Strongly typed pointers with reserved bits for storing additional bit
+//! patterns within pointer-width memory words.
+//!
+//! # Motivation
+//!
+//! # Examples
+
 #![no_std]
 
 #[macro_use]
@@ -5,24 +12,37 @@ mod macros;
 
 // this module relies on 48-bit virtual addresses and thus explicitly names each
 // supported architecture with this property.
-#[cfg(any(
-    target_arch = "x86_64",
-    target_arch = "powerpc64",
-    target_arch = "aarch64"
-))]
+#[cfg(any(target_arch = "x86_64", target_arch = "powerpc64", target_arch = "aarch64"))]
 pub mod arch64;
 
 mod imp;
 
 use core::marker::PhantomData;
 use core::mem;
-use core::ptr::{self, NonNull};
+use core::ptr::NonNull;
 use core::sync::atomic::AtomicUsize;
 
-// public re-export
+// public re-export(s)
 pub use typenum;
 
 use typenum::Unsigned;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// AtomicMarkedPtr
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// A raw pointer type which can be safely shared between threads and which
+/// can store additional information in its lower (unused) bits.
+///
+/// This type has the same in-memory representation as a `*mut T`. It is mostly
+/// identical to [`AtomicPtr`][atomic], except that all of its methods involve
+/// a [`MarkedPtr`] instead of `*mut T`.
+///
+/// [atomic]: core::sync::atomic::AtomicPtr
+pub struct AtomicMarkedPtr<T, N> {
+    inner: AtomicUsize,
+    _marker: PhantomData<(*mut T, N)>,
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // MarkedPtr
@@ -98,7 +118,7 @@ pub fn assert_alignment<T, N: Unsigned>() {
     );
 }
 
-/********** internal helper functions *************************************************************/
+/********** helper function(s) ********************************************************************/
 
 /// Decomposes the integer representation of a `marked_ptr` for a given number
 /// of `tag_bits` into only a raw pointer.
