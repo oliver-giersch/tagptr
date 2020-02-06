@@ -60,6 +60,13 @@ impl<T> MarkedPtr128<T> {
     }
 
     doc_comment! {
+        doc_cast!(),
+        pub const fn cast<U>(self) -> MarkedPtr128<U> {
+            MarkedPtr128 { ptr: self.ptr.cast(), tag: self.tag }
+        }
+    }
+
+    doc_comment! {
         doc_decompose!(),
         #[inline]
         pub const fn decompose(self) -> (*mut T, u64) {
