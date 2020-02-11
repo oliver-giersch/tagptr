@@ -57,6 +57,15 @@ macro_rules! impl_atomic_debug {
     };
 }
 
+macro_rules! impl_atomic_from_raw {
+    ($ptr:ty) => {
+        #[inline]
+        fn from(ptr: $ptr) -> Self {
+            Self::new(ptr.into())
+        }
+    };
+}
+
 macro_rules! impl_atomic_pointer {
     () => {
         #[inline]

@@ -3,14 +3,14 @@
 
 #include <stdint.h>
 
-typedef struct uint128_t {
+struct dwcas_uint128_t {
   uint64_t first, second;
-} uint128_t;
+};
 
 uint8_t dwcas_compare_exchange_128(
-  uint128_t* dest,
-  uint128_t old,
-  uint128_t new,
+  struct dwcas_uint128_t* dest,
+  struct dwcas_uint128_t old,
+  struct dwcas_uint128_t new,
 );
 
 #endif /* CONQUER_POINTER_DWCAS_H */

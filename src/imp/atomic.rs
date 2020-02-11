@@ -35,6 +35,24 @@ impl<T, N: Unsigned> fmt::Debug for AtomicMarkedPtr<T, N> {
     impl_atomic_debug!("AtomicMarkedPtr");
 }
 
+/********** impl Default **************************************************************************/
+
+impl<T, N> Default for AtomicMarkedPtr<T, N> {
+    impl_default!();
+}
+
+/********** impl From (*mut T) ********************************************************************/
+
+impl<T, N> From<*mut T> for AtomicMarkedPtr<T, N> {
+    impl_atomic_from_raw!(*mut T);
+}
+
+/********** impl From (MarkedPtr<T, N>) ***********************************************************/
+
+impl<T, N> From<MarkedPtr<T, N>> for AtomicMarkedPtr<T, N> {
+    impl_atomic_from_raw!(MarkedPtr<T, N>);
+}
+
 /********** impl Pointer **************************************************************************/
 
 impl<T, N: Unsigned> fmt::Pointer for AtomicMarkedPtr<T, N> {
