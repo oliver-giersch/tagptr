@@ -28,7 +28,7 @@ macro_rules! doc_ptr_mask {
     };
 }
 
-/********** various macros for generating documentation for functions *****************************/
+/********** macros for generating marked pointers *************************************************/
 
 macro_rules! doc_null {
     ($example_type_path:path) => {
@@ -87,8 +87,8 @@ macro_rules! doc_dangling {
 macro_rules! doc_new {
     ($example_type_path:path) => {
         concat!(
-            "Creates a new unmarked pointer.\n\n\
-            # Examples\n\n\
+            doc_new!(),
+            "\n\n# Examples\n\n\
             ```\nuse core::ptr;\n\n\
             type MarkedPtr = ",
             stringify!($example_type_path),
@@ -97,6 +97,9 @@ macro_rules! doc_new {
             let ptr = MarkedPtr::new(reference);\n\
             assert_eq!(ptr.decompose(), (reference as *mut _, 0));\n```"
         )
+    };
+    () => {
+        "Creates a new unmarked pointer."
     };
 }
 
@@ -314,5 +317,23 @@ macro_rules! doc_decompose_non_null {
 macro_rules! doc_decompose_tag {
     () => {
         "Decomposes the marked pointer, returning only the separated tag value."
+    };
+}
+
+/********** macros for generating atomic marked pointers *******************************************/
+
+macro_rules! doc_load {
+    () => {
+        "Loads the value of the atomic marked pointer.\n\n\
+        `load` takes an [`Ordering`] argument which describes the memory ordering of this \
+        operation.\n\
+        Possible values are [`SeqCst`][seq_cst], [`Acquire`][acq] and [`Relaxed`][rlx].\n\n\
+        # Panics\n\n\
+        Panics if `order` is [`Release`][rel] or [`AcqRel`][acq_rel].\n\n\
+        [rlx]: Ordering::Relaxed\n\
+        [acq]: Ordering::Acquire\n\
+        [rel]: Ordering::Release\n\
+        [acq_rel]: Ordering::AcqRel\n\
+        [seq_cst]: Ordering::SeqCst"
     };
 }
