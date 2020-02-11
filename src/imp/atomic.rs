@@ -14,7 +14,7 @@ unsafe impl<T, N> Sync for AtomicMarkedPtr<T, N> {}
 /********** impl inherent (const) *****************************************************************/
 
 impl<T, N> AtomicMarkedPtr<T, N> {
-    impl_atomic_inherent_const!();
+    impl_atomic_inherent_const!(ptr_type = MarkedPtr<T, N>, ptr_ident = MarkedPtr);
 }
 
 /********** impl inherent *************************************************************************/
@@ -26,7 +26,7 @@ impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
         tag_mask = crate::mark_mask::<T>(N::USIZE)
     );
 
-    impl_atomic_inherent!(ptr_type = MarkedPtr<T, N>);
+    impl_atomic_inherent!(ptr_type = MarkedPtr<T, N>, ptr_ident = MarkedPtr);
 }
 
 /********** impl Debug ****************************************************************************/

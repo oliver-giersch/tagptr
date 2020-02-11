@@ -1,25 +1,12 @@
 use core::fmt;
-use core::mem;
+use core::mem::transmute;
 use core::ptr;
 use core::sync::atomic::{AtomicPtr, AtomicU64, Ordering};
 
+#[cfg(not(feature = "nightly"))]
+use self::ffi::cmpxchg16b;
 #[cfg(feature = "nightly")]
 use core::arch::x86_64::cmpxchg16b;
-use core::intrinsics::transmute;
-
-#[cfg(not(feature = "nightly"))]
-extern "C" {
-    fn dwcas_compare_exchange_128(dst: *mut u128, old: u128, new: u128) -> u8;
-}
-
-#[cfg(not(feature = "nightly"))]
-#[inline]
-unsafe fn cmpxchg16b(dst: *mut u128, old: u128, new: u128, _: Ordering, _: Ordering) -> u128 {
-    match dwcas_compare_exchange_128(dst, old, new) {
-        0 => old,
-        _ => *dst,
-    }
-}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // AtomicMarkedPtr128
@@ -40,8 +27,32 @@ unsafe impl<T> Sync for AtomicMarkedPtr128<T> {}
 
 impl<T> AtomicMarkedPtr128<T> {
     #[inline]
+    pub const fn new(marked_ptr: MarkedPtr128<T>) -> Self {
+        let (ptr, tag) = marked_ptr.decompose();
+        Self { ptr: AtomicPtr::new(ptr), tag: AtomicU64::new(tag) }
+    }
+
+    #[inline]
     pub fn load(&self, order: Ordering) -> MarkedPtr128<T> {
-        todo!()
+        match order {
+            Ordering::Relaxed | Ordering::Acquire | Ordering::SeqCst => {
+                self.compare_and_swap(MarkedPtr128::null(), MarkedPtr128::null(), order)
+            }
+            _ => panic!(),
+        }
+    }
+
+    #[inline]
+    pub fn compare_and_swap(
+        &self,
+        current: MarkedPtr128<T>,
+        new: MarkedPtr128<T>,
+        order: Ordering,
+    ) -> MarkedPtr128<T> {
+        match self.compare_exchange(current, new, order, strongest_failure_ordering(order)) {
+            Ok(res) => res,
+            Err(res) => res,
+        }
     }
 
     #[inline]
@@ -119,7 +130,7 @@ impl<T> MarkedPtr128<T> {
 
     doc_comment! {
         doc_into_usize!(),
-        pub const fn into_u128(self) -> u128 {
+        pub fn into_u128(self) -> u128 {
             unsafe { transmute(self) }
         }
     }
@@ -159,4 +170,51 @@ impl<T> fmt::Debug for MarkedPtr128<T> {
 
 impl<T> Default for MarkedPtr128<T> {
     impl_default!();
+}
+
+/********** ffi module ****************************************************************************/
+
+#[cfg(not(feature = "nightly"))]
+mod ffi {
+    use core::sync::atomic::Ordering;
+
+    #[inline]
+    pub unsafe fn cmpxchg16b(
+        dst: *mut u128,
+        old: u128,
+        new: u128,
+        _: Ordering,
+        _: Ordering,
+    ) -> u128 {
+        match dwcas_compare_exchange_128(dst as _, old.into(), new.into()) {
+            0 => old,
+            _ => *dst,
+        }
+    }
+
+    #[repr(C)]
+    struct U128(u64, u64);
+
+    impl From<u128> for U128 {
+        #[inline]
+        fn from(val: u128) -> Self {
+            unsafe { core::mem::transmute(val) }
+        }
+    }
+
+    extern "C" {
+        fn dwcas_compare_exchange_128(dst: *mut U128, old: U128, new: U128) -> u8;
+    }
+}
+
+#[inline]
+fn strongest_failure_ordering(order: Ordering) -> Ordering {
+    match order {
+        Ordering::Release => Ordering::Relaxed,
+        Ordering::Relaxed => Ordering::Relaxed,
+        Ordering::SeqCst => Ordering::SeqCst,
+        Ordering::Acquire => Ordering::Acquire,
+        Ordering::AcqRel => Ordering::Acquire,
+        _ => unreachable!(),
+    }
 }

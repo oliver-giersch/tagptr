@@ -1,15 +1,13 @@
+#[cfg(target_arch = "x86_64")]
 mod dwcas;
 mod imp;
+
+#[cfg(target_arch = "x86_64")]
+pub use self::dwcas::{AtomicMarkedPtr128, MarkedPtr128};
 
 use core::marker::PhantomData;
 use core::ptr::NonNull;
 use core::sync::atomic::AtomicUsize;
-
-/********** constant(s) ***************************************************************************/
-
-const TAG_SHIFT: usize = 48;
-const TAG_BITS: u16 = 16;
-const TAG_MASK: usize = 0xFFFF << TAG_SHIFT;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // AtomicMarkedPtr64
@@ -47,3 +45,9 @@ pub struct MarkedNonNull64<T> {
 fn compose<T>(ptr: *mut T, tag: u16) -> *mut T {
     (ptr as usize | (tag as usize) << TAG_SHIFT) as *mut _
 }
+
+/********** constant(s) ***************************************************************************/
+
+const TAG_SHIFT: usize = 48;
+const TAG_BITS: u16 = 16;
+const TAG_MASK: usize = 0xFFFF << TAG_SHIFT;
