@@ -361,7 +361,7 @@ macro_rules! doc_load {
         operation.\n\
         Possible values are [`SeqCst`][seq_cst], [`Acquire`][acq] and [`Relaxed`][rlx].\n\n\
         # Panics\n\n\
-        Panics if `order` is [`Release`][rel] or [`AcqRel`][acq_rel].\n\
+        Panics if `order` is [`Release`][rel] or [`AcqRel`][acq_rel].\n\n\
         [rlx]: Ordering::Relaxed\n\
         [acq]: Ordering::Acquire\n\
         [rel]: Ordering::Release\n\
@@ -376,11 +376,58 @@ macro_rules! doc_store {
         `store` takes an [`Ordering`] argument which describes the memory ordering of this operation.\n\
         Possible values are [`SeqCst`][seq_cst], [`Release`][rel] and [`Relaxed`][rlx].\n\n\
         # Panics\n\n\
-        Panics if `order` is [`Acquire`][acq] or [`AcqRel`][acq_rel].\n\
+        Panics if `order` is [`Acquire`][acq] or [`AcqRel`][acq_rel].\n\n\
         [rlx]: Ordering::Relaxed\n\
         [acq]: Ordering::Acquire\n\
         [rel]: Ordering::Release\n\
         [acq_rel]: Ordering::AcqRel\n\
         [seq_cst]: Ordering::SeqCst"
+    };
+}
+
+macro_rules! doc_fetch_and_x_note {
+    ("note") => {
+        "This operation directly and unconditionally alters the internal numeric representation \
+        of the atomic marked pointer. Hence there is no way to reliably guarantee the operation \
+        only affects the tag bits and does not overflow into the pointer bits."
+    };
+    ("ordering", $fn_ident:expr) => {
+        concat!(
+            $fn_ident,
+            " takes an [`Ordering`] argument which describes the memory ordering of this operation.\n\
+            All ordering modes are possible. Note that using [`Acquire`][acq] makes the store part \
+            of this operation [`Relaxed`][rlx] and using [`Release`][rel] makes the load part \
+            [`Relaxed`][rlx].\n\n\
+            [rlx]: Ordering::Relaxed\n\
+            [acq]: Ordering::Acquire\n\
+            [rel]: Ordering::Release"
+        )
+    };
+}
+
+macro_rules! doc_fetch_add {
+    ($fn_ident:expr, $example_type_path:path) => {
+        concat!(
+            doc_fetch_add!(),
+            "\n\n",
+            doc_fetch_and_x_note!("note"),
+            "\n\n",
+            doc_fetch_and_x_note!("ordering", $fn_ident),
+            "\n\n# Examples\n\n\
+            ```\nuse core::ptr;\n\
+            use core::sync::atomic::Ordering;\n\n\
+            type AtomicMarkedPtr = ",
+            stringify!($example_type_path),
+            ";\n\n\
+            let reference = &mut 1;\n\
+            let ptr = AtomicMarkedPtr::from(reference);\n\
+            assert_eq!(\n\
+                \tptr.fetch_add(1, Ordering::Relaxed).decompose(),\n\
+                \t(reference as *mut _, 0b01)\n\
+            );\n```"
+        )
+    };
+    () => {
+        "Adds `value` to the current tag value, returning the previous marked pointer."
     };
 }

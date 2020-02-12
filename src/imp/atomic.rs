@@ -26,7 +26,12 @@ impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
         tag_mask = crate::mark_mask::<T>(N::USIZE)
     );
 
-    impl_atomic_inherent!(ptr_type = MarkedPtr<T, N>, ptr_ident = MarkedPtr);
+    impl_atomic_inherent!(
+        ptr_type = MarkedPtr<T, N>,
+        ptr_ident = MarkedPtr,
+        tag_type = usize,
+        example_type_path = conquer_pointer::AtomicMarkedPtr<i32, conquer_pointer::typenum::U2>
+    );
 }
 
 /********** impl Debug ****************************************************************************/
