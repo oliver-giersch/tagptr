@@ -361,7 +361,22 @@ macro_rules! doc_load {
         operation.\n\
         Possible values are [`SeqCst`][seq_cst], [`Acquire`][acq] and [`Relaxed`][rlx].\n\n\
         # Panics\n\n\
-        Panics if `order` is [`Release`][rel] or [`AcqRel`][acq_rel].\n\n\
+        Panics if `order` is [`Release`][rel] or [`AcqRel`][acq_rel].\n\
+        [rlx]: Ordering::Relaxed\n\
+        [acq]: Ordering::Acquire\n\
+        [rel]: Ordering::Release\n\
+        [acq_rel]: Ordering::AcqRel\n\
+        [seq_cst]: Ordering::SeqCst"
+    };
+}
+
+macro_rules! doc_store {
+    () => {
+        "Stores a value into the atomic marked pointer.\n\n\
+        `store` takes an [`Ordering`] argument which describes the memory ordering of this operation.\n\
+        Possible values are [`SeqCst`][seq_cst], [`Release`][rel] and [`Relaxed`][rlx].\n\n\
+        # Panics\n\n\
+        Panics if `order` is [`Acquire`][acq] or [`AcqRel`][acq_rel].\n\
         [rlx]: Ordering::Relaxed\n\
         [acq]: Ordering::Acquire\n\
         [rel]: Ordering::Release\n\

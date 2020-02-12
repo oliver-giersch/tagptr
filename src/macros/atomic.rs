@@ -30,9 +30,12 @@ macro_rules! impl_atomic_inherent_const {
             }
         }
 
-        #[inline]
-        pub fn store(&self, ptr: $ptr_type, order: Ordering) {
-            self.inner.store(ptr.into_usize(), order)
+        doc_comment! {
+            doc_store!(),
+            #[inline]
+            pub fn store(&self, ptr: $ptr_type, order: Ordering) {
+                self.inner.store(ptr.into_usize(), order)
+            }
         }
 
         #[inline]

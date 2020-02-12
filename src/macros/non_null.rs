@@ -70,7 +70,7 @@ macro_rules! impl_non_null_inherent {
         /// value.
         #[inline]
         pub fn new(marked_ptr: $ptr_type) -> Result<Self, Null> {
-            todo!()
+            Self::try_from(marked_ptr)
         }
 
         doc_comment! {
