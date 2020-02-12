@@ -173,3 +173,29 @@ macro_rules! impl_non_null_inherent {
         }
     };
 }
+
+/// A macro for implementing `From` from reference types for non-nullable marked pointers.
+macro_rules! impl_non_null_from_reference {
+    ($reference:ty) => {
+        #[inline]
+        fn from(reference: $reference) -> Self {
+            Self { inner: NonNull::from(reference), _marker: PhantomData }
+        }
+    };
+}
+
+/// A macro for implementing `TryFrom` from pointer types for non-nullable marked pointers.
+macro_rules! impl_non_null_try_from_raw_mut {
+    () => {
+        type Error = Null;
+
+        #[inline]
+        fn try_from(ptr: *mut T) -> Result<Self, Self::Error> {
+            if ptr as usize & Self::POINTER_MASK == 0 {
+                Err(Null(ptr as usize))
+            } else {
+                Ok(Self { inner: unsafe { NonNull::new_unchecked(ptr) }, _marker: PhantomData })
+            }
+        }
+    };
+}

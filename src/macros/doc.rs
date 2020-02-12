@@ -189,10 +189,23 @@ macro_rules! doc_split_tag {
 }
 
 macro_rules! doc_set_tag {
+    ("non-null" $example_type_path:path) => {
+        concat!(
+            doc_set_tag!(),
+            "\n\n# Examples\n\n\
+            ```\nuse core::ptr;\n\n\
+            type MarkedNonNull = ",
+            stringify!($example_type_path),
+            ";\n\n\
+            let reference = &mut 1;\n\
+            let ptr = MarkedNonNull::compose(NonNull::from(reference), 0b11);\n\
+            assert_eq!(ptr.set_tag(0b10).decompose(), (NonNull::from(reference), 0b10));\n```"
+        )
+    };
     ($example_type_path:path) => {
         concat!(
-            "Sets the marked pointer's tag value to `tag` and overwrites any previous value.\n\n\
-            # Examples\n\n\
+            doc_set_tag!(),
+            "\n\n# Examples\n\n\
             ```\nuse core::ptr;\n\n\
             type MarkedPtr = ",
             stringify!($example_type_path),
@@ -202,14 +215,29 @@ macro_rules! doc_set_tag {
             assert_eq!(ptr.set_tag(0b10).decompose(), (reference as *mut _, 0b10));\n```"
         )
     };
+    () => {
+        "Sets the marked pointer's tag value to `tag` and overwrites any previous value."
+    };
 }
 
 macro_rules! doc_update_tag {
+    ("non-null" $example_type_path:path) => {
+        concat!(
+            doc_update_tag!(),
+            "\n\n# Examples\n\n\
+            ```\nuse core::ptr;\n\n\
+            type MarkedNonNull = ",
+            stringify!($example_type_path),
+            ";\n\n\
+            let reference = &mut 1;\n\
+            let ptr = MarkedNonNull::compose(reference, 0b11);\n\
+            assert_eq!(ptr.update_tag(|tag| tag - 2).decompose(), (NonNull::from(reference), 0b01));\n```"
+        )
+    };
     ($example_type_path:path) => {
         concat!(
-            "Updates the marked pointer's tag value to the result of `func`, which is called with \
-            the current tag value.\n\n\
-            # Examples\n\n\
+            doc_update_tag!(),
+            "\n\n# Examples\n\n\
             ```\nuse core::ptr;\n\n\
             type MarkedPtr = ",
             stringify!($example_type_path),
@@ -219,6 +247,10 @@ macro_rules! doc_update_tag {
             let ptr = ptr.update_tag(|tag| tag - 1);\n\
             assert_eq!(ptr.decompose(), (reference as *mut _, 0b10));\n```"
         )
+    };
+    () => {
+        "Updates the marked pointer's tag value to the result of `func`, which is called with the \
+        current tag value."
     };
 }
 

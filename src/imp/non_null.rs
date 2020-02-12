@@ -1,4 +1,7 @@
+use core::cmp;
+use core::convert::TryFrom;
 use core::fmt;
+use core::hash::{Hash, Hasher};
 use core::marker::PhantomData;
 use core::ptr::NonNull;
 
@@ -65,7 +68,7 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
     ///
     /// # Errors
     ///
-    /// This function fails if
+    /// Panics if ...
     #[inline]
     pub fn try_compose(ptr: NonNull<T>, tag: usize) -> Result<Self, Null> {
         match ptr.as_ptr() as usize & Self::POINTER_MASK {
@@ -79,16 +82,22 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
         Self::new_unchecked(MarkedPtr::compose(ptr.as_ptr(), tag))
     }
 
-    #[inline]
-    pub fn set_tag(self, tag: usize) -> Self {
-        let ptr = self.decompose_non_null();
-        unsafe { Self::compose_unchecked(ptr, tag) }
+    doc_comment! {
+        doc_set_tag!("non-null" conquer_pointer::MarkedNonNull<i32, conquer_pointer::typenum::U2>),
+        #[inline]
+        pub fn set_tag(self, tag: usize) -> Self {
+            let ptr = self.decompose_non_null();
+            unsafe { Self::compose_unchecked(ptr, tag) }
+        }
     }
 
-    #[inline]
-    pub fn update_tag(self, func: impl FnOnce(usize) -> usize) -> Self {
-        let (ptr, tag) = self.decompose();
-        unsafe { Self::compose_unchecked(ptr, func(tag)) }
+    doc_comment! {
+        doc_update_tag!("non-null" conquer_pointer::MarkedNonNull<i32, conquer_pointer::typenum::U2>),
+        #[inline]
+        pub fn update_tag(self, func: impl FnOnce(usize) -> usize) -> Self {
+            let (ptr, tag) = self.decompose();
+            unsafe { Self::compose_unchecked(ptr, func(tag)) }
+        }
     }
 
     doc_comment! {
@@ -124,24 +133,85 @@ impl<T, N: Unsigned> fmt::Debug for MarkedNonNull<T, N> {
 
 /********** impl Pointer **************************************************************************/
 
+impl<T, N: Unsigned> fmt::Pointer for MarkedNonNull<T, N> {
+    impl_pointer!();
+}
+
 /********** impl From (&T) ************************************************************************/
+
+impl<T, N> From<&T> for MarkedNonNull<T, N> {
+    impl_non_null_from_reference!(&T);
+}
 
 /********** impl From (&mut T) ********************************************************************/
 
+impl<T, N> From<&mut T> for MarkedNonNull<T, N> {
+    impl_non_null_from_reference!(&mut T);
+}
+
 /********** impl PartialEq ************************************************************************/
+
+impl<T, N> PartialEq for MarkedNonNull<T, N> {
+    impl_partial_eq!();
+}
 
 /********** impl PartialOrd ***********************************************************************/
 
+impl<T, N> PartialOrd for MarkedNonNull<T, N> {
+    impl_partial_ord!();
+}
+
 /********** impl Eq *******************************************************************************/
+
+impl<T, N> Eq for MarkedNonNull<T, N> {}
 
 /********** impl Ord ******************************************************************************/
 
+impl<T, N> Ord for MarkedNonNull<T, N> {
+    impl_ord!();
+}
+
 /********** impl Hash *****************************************************************************/
 
-/********** impl TryFrom (MarkedPtr) **************************************************************/
+impl<T, N> Hash for MarkedNonNull<T, N> {
+    impl_hash!();
+}
 
 /********** impl TryFrom (*mut T) *****************************************************************/
 
+impl<T, N: Unsigned> TryFrom<*mut T> for MarkedNonNull<T, N> {
+    impl_non_null_try_from_raw_mut!();
+}
+
 /********** impl TryFrom (*const T) ***************************************************************/
 
+impl<T, N: Unsigned> TryFrom<*const T> for MarkedNonNull<T, N> {
+    type Error = Null;
+
+    #[inline]
+    fn try_from(ptr: *const T) -> Result<Self, Self::Error> {
+        Self::try_from(ptr as *mut _)
+    }
+}
+
+/********** impl TryFrom (MarkedPtr) **************************************************************/
+
+impl<T, N: Unsigned> TryFrom<MarkedPtr<T, N>> for MarkedNonNull<T, N> {
+    type Error = Null;
+
+    #[inline]
+    fn try_from(ptr: MarkedPtr<T, N>) -> Result<Self, Self::Error> {
+        Self::try_from(ptr.into_raw())
+    }
+}
+
 /********** impl TryFrom (NonNull) ****************************************************************/
+
+impl<T, N: Unsigned> TryFrom<NonNull<T>> for MarkedNonNull<T, N> {
+    type Error = Null;
+
+    #[inline]
+    fn try_from(ptr: NonNull<T>) -> Result<Self, Self::Error> {
+        Self::try_from(ptr.as_ptr())
+    }
+}

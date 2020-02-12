@@ -1,7 +1,9 @@
 use core::cmp;
+use core::convert::TryFrom;
 use core::fmt;
+use core::hash::{Hash, Hasher};
 use core::marker::PhantomData;
-use core::ptr::{self, NonNull};
+use core::ptr::NonNull;
 
 use crate::arch64::{MarkedNonNull64, MarkedPtr64};
 use crate::Null;
@@ -52,15 +54,21 @@ impl<T> MarkedNonNull64<T> {
         }
     }
 
-    #[inline]
-    pub fn set_tag(self, tag: u16) -> Self {
-        Self::compose(self.decompose_non_null(), tag)
+    doc_comment! {
+        doc_set_tag!("non-null" conquer_pointer::arch64::MarkedNonNull64<i32>),
+        #[inline]
+        pub fn set_tag(self, tag: u16) -> Self {
+            Self::compose(self.decompose_non_null(), tag)
+        }
     }
 
-    #[inline]
-    pub fn update_tag(self, func: impl FnOnce(u16) -> u16) -> Self {
-        let (ptr, tag) = self.decompose();
-        Self::compose(ptr, func(tag))
+    doc_comment! {
+        doc_update_tag!("non-null" conquer_pointer::arch64::MarkedNonNull64<i32>),
+        #[inline]
+        pub fn update_tag(self, func: impl FnOnce(u16) -> u16) -> Self {
+            let (ptr, tag) = self.decompose();
+            Self::compose(ptr, func(tag))
+        }
     }
 
     doc_comment! {
@@ -96,26 +104,83 @@ impl<T> fmt::Debug for MarkedNonNull64<T> {
 
 /********** impl Pointer **************************************************************************/
 
+impl<T> fmt::Pointer for MarkedNonNull64<T> {
+    impl_pointer!();
+}
+
 /********** impl From (&T) ************************************************************************/
+
+impl<T> From<&T> for MarkedNonNull64<T> {
+    impl_non_null_from_reference!(&T);
+}
 
 /********** impl From (&mut T) ********************************************************************/
 
+impl<T> From<&mut T> for MarkedNonNull64<T> {
+    impl_non_null_from_reference!(&mut T);
+}
+
 /********** impl From (NonNull<T>) ****************************************************************/
+
+impl<T> From<NonNull<T>> for MarkedNonNull64<T> {
+    #[inline]
+    fn from(inner: NonNull<T>) -> Self {
+        Self { inner, _marker: PhantomData }
+    }
+}
 
 /********** impl PartialEq ************************************************************************/
 
+impl<T> PartialEq for MarkedNonNull64<T> {
+    impl_partial_eq!();
+}
+
 /********** impl PartialOrd ***********************************************************************/
+
+impl<T> PartialOrd for MarkedNonNull64<T> {
+    impl_partial_ord!();
+}
 
 /********** impl Eq *******************************************************************************/
 
+impl<T> Eq for MarkedNonNull64<T> {}
+
 /********** impl Ord ******************************************************************************/
+
+impl<T> Ord for MarkedNonNull64<T> {
+    impl_ord!();
+}
 
 /********** impl Hash *****************************************************************************/
 
+impl<T> Hash for MarkedNonNull64<T> {
+    impl_hash!();
+}
+
 /********** impl TryFrom (*mut T) *****************************************************************/
+
+impl<T> TryFrom<*mut T> for MarkedNonNull64<T> {
+    impl_non_null_try_from_raw_mut!();
+}
 
 /********** impl TryFrom (*const T) ***************************************************************/
 
+impl<T> TryFrom<*const T> for MarkedNonNull64<T> {
+    type Error = Null;
+
+    #[inline]
+    fn try_from(ptr: *const T) -> Result<Self, Self::Error> {
+        Self::try_from(ptr as *mut _)
+    }
+}
+
 /********** impl TryFrom (MarkedPtr64) ************************************************************/
 
-/********** impl TryFrom (NonNull) ****************************************************************/
+impl<T> TryFrom<MarkedPtr64<T>> for MarkedNonNull64<T> {
+    type Error = Null;
+
+    #[inline]
+    fn try_from(ptr: MarkedPtr64<T>) -> Result<Self, Self::Error> {
+        Self::try_from(ptr.into_raw())
+    }
+}
