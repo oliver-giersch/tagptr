@@ -1,3 +1,17 @@
+//! A module containing additional marked pointer types for 64-bit processor
+//! architectures.
+//!
+//! Current 64-bit processor architectures except the very latest Intel x86-64
+//! micro-architectures (Sunny Cove and later) use 64-bit registers but only
+//! 48-bit virtual addresses and 4-level page table structure.
+//! Consequently, the upper 16 bits of any pointer are always unused and can be
+//! used to store tag values instead, regardless of alignment.
+//!
+//! The x86-64 architecture in particular provides the `cmpxchg16` CPU
+//! instruction, which can be used to implement the double-width
+//! compare-and-swap (DWCAS or DCAS) operation, for which this module also
+//! exports the appropriate marked pointer types.
+
 #[cfg(target_arch = "x86_64")]
 mod dwcas;
 mod imp;

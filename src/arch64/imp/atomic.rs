@@ -23,6 +23,14 @@ impl<T> AtomicMarkedPtr64<T> {
     );
 
     impl_atomic_inherent_const!(ptr_type = MarkedPtr64<T>, ptr_ident = MarkedPtr64);
+
+    impl_atomic_inherent!(
+        ptr_type = MarkedPtr64<T>,
+        ptr_ident = MarkedPtr64,
+        tag_type = u16,
+        example_atomic_path = conquer_pointer::arch64::AtomicMarkedPtr64<i32>,
+        example_ptr_path = conquer_pointer::arch64::MarkedPtr64<i32>
+    );
 }
 
 /********** impl Debug ****************************************************************************/

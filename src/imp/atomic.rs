@@ -30,7 +30,8 @@ impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
         ptr_type = MarkedPtr<T, N>,
         ptr_ident = MarkedPtr,
         tag_type = usize,
-        example_type_path = conquer_pointer::AtomicMarkedPtr<i32, conquer_pointer::typenum::U2>
+        example_atomic_path = conquer_pointer::AtomicMarkedPtr<i32, conquer_pointer::typenum::U2>,
+        example_ptr_path = conquer_pointer::MarkedPtr<i32, conquer_pointer::typenum::U2>
     );
 }
 

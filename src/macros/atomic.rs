@@ -101,20 +101,25 @@ macro_rules! impl_atomic_inherent {
     ptr_type = $ptr_type:ty,
     ptr_ident = $ptr_ident:ident,
     tag_type = $tag_type:ty,
-    example_type_path = $example_type_path:path
+    example_atomic_path = $example_atomic_path:path,
+    example_ptr_path = $example_ptr_path:path
 ) => {
         doc_comment! {
-            doc_fetch_add!("`fetch_add`", $example_type_path),
+            doc_fetch_add!("`fetch_add`", $example_atomic_path),
             #[inline]
             pub fn fetch_add(&self, value: $tag_type, order: Ordering) -> $ptr_type {
                 todo!()
             }
         }
 
-        #[inline]
-        pub fn fetch_sub(&self, value: $tag_type, order: Ordering) -> $ptr_type {
-            todo!()
+        doc_comment! {
+            doc_fetch_sub!("`fetch_sub`", $example_atomic_path, $example_ptr_path),
+            #[inline]
+            pub fn fetch_sub(&self, value: $tag_type, order: Ordering) -> $ptr_type {
+                todo!()
+            }
         }
+
 
         #[inline]
         pub fn fetch_or(&self, value: $tag_type, order: Ordering) -> $ptr_type {

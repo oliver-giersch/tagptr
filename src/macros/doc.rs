@@ -385,7 +385,7 @@ macro_rules! doc_store {
     };
 }
 
-macro_rules! doc_fetch_and_x_note {
+macro_rules! doc_fetch_and_x {
     ("note") => {
         "This operation directly and unconditionally alters the internal numeric representation \
         of the atomic marked pointer. Hence there is no way to reliably guarantee the operation \
@@ -406,18 +406,18 @@ macro_rules! doc_fetch_and_x_note {
 }
 
 macro_rules! doc_fetch_add {
-    ($fn_ident:expr, $example_type_path:path) => {
+    ($fn_ident:expr, $example_atomic_path:path) => {
         concat!(
             doc_fetch_add!(),
             "\n\n",
-            doc_fetch_and_x_note!("note"),
+            doc_fetch_and_x!("note"),
             "\n\n",
-            doc_fetch_and_x_note!("ordering", $fn_ident),
+            doc_fetch_and_x!("ordering", $fn_ident),
             "\n\n# Examples\n\n\
             ```\nuse core::ptr;\n\
             use core::sync::atomic::Ordering;\n\n\
             type AtomicMarkedPtr = ",
-            stringify!($example_type_path),
+            stringify!($example_atomic_path),
             ";\n\n\
             let reference = &mut 1;\n\
             let ptr = AtomicMarkedPtr::from(reference);\n\
@@ -429,5 +429,34 @@ macro_rules! doc_fetch_add {
     };
     () => {
         "Adds `value` to the current tag value, returning the previous marked pointer."
+    };
+}
+
+macro_rules! doc_fetch_sub {
+    ($fn_ident:expr, $example_atomic_path:path, $example_ptr_path:path) => {
+        concat!(
+            doc_fetch_sub!(),
+            "\n\n",
+            doc_fetch_and_x!("note"),
+            "\n\n",
+            doc_fetch_and_x!("ordering", $fn_ident),
+            "\n\n# Examples\n\n\
+           ```\nuse core::ptr;\n\
+           use core::sync::atomic::Ordering;\n\n\
+           type AtomicMaredPtr = ",
+            stringify!($example_atomic_path),
+            ";\ntype MarkedPtr = ",
+            stringify!($example_ptr_path),
+            ";\n\n\
+           let reference = &mut 1;\n\
+           let ptr = AtomicMarkedPtr::new(MarkedPtr::compose(reference, 0b10));\n\
+           assert_eq!(\n\
+               \tptr.fetch_sub(1, Ordering::Relaxed).decompose(),\n\
+               \t(reference as *mut _, 0b01)\n\
+           );\n```"
+        )
+    };
+    () => {
+        "Subtracts `value` from the current tag value, returning the previous marked pointer."
     };
 }
