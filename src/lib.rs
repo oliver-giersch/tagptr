@@ -3,7 +3,19 @@
 //!
 //! # Motivation
 //!
+//! Many lock-free algorithms require storing additional state information
+//! together with pointers (i.e., within the same 32-bit or 64-bit memory word)
+//! in order to be able to exchange both the pointer and the state with a single
+//! atomic instruction.
+//! The marked pointer types provided by this crate encapsulate and abstract the
+//! required functionality and logic for composing, decomposing and mutating
+//! such pointers with tag values.
+//!
 //! # Examples
+
+// TODO: atomic doc examples
+// TODO: module/crate docs
+// TODO: missing impls
 
 #![no_std]
 
@@ -54,8 +66,6 @@ pub struct AtomicMarkedPtr<T, N> {
 /// Note, that the upper bound for `N` is dictated by the alignment of `T`.
 /// A type with an alignment of `8` (e.g. a `usize` on 64-bit architectures) can
 /// have up to `3` mark bits.
-/// Attempts to use types with insufficient alignment will result in a compile-
-/// time error.
 #[repr(transparent)]
 pub struct MarkedPtr<T, N> {
     inner: *mut T,
@@ -71,7 +81,7 @@ pub struct MarkedPtr<T, N> {
 /// # Invariants
 ///
 /// Unlike [`NonNull`] this type does not permit values that would be `null`
-/// pointers if its first `N` bits are interpreted as tag.
+/// pointers after its first `N` bits are parsed as the tag value.
 /// For instance, a pointer value `0x1`, despite not pointing at valid memory,
 /// is still valid for constructing a [`NonNull`] value.
 /// For any `N > 0`, however, this value is not a valid [`MarkedNonNull`], since
@@ -141,13 +151,19 @@ const fn lower_bits<T>() -> usize {
     mem::align_of::<T>().trailing_zeros() as usize
 }
 
-//#[deny(const_err)]
+/// Returns the bit-mask for the lower bits containing the tag value.
 #[inline]
 const fn mark_mask<T>(tag_bits: usize) -> usize {
-    //let _assert_sufficient_alignment = lower_bits::<T>() - tag_bits;
     (1 << tag_bits) - 1
 }
 
+/// Composes the given `ptr` with `tag` and returns the composed marked pointer
+/// as a raw `*mut T`.
+///
+/// # Panics
+///
+/// Panics in *debug* builds if `ptr` is not well aligned, i.e., if it contains
+/// any bits in its lower bits reserved for the tag value.
 #[inline]
 fn compose<T>(ptr: *mut T, tag: usize, tag_bits: usize) -> *mut T {
     debug_assert_eq!(ptr as usize & mark_mask::<T>(tag_bits), 0);

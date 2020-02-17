@@ -47,57 +47,69 @@ macro_rules! impl_atomic_inherent_const {
             }
         }
 
-        #[inline]
-        pub fn swap(&self, ptr: $ptr_type, order: Ordering) -> $ptr_type {
-            $ptr_ident::from_usize(self.inner.swap(ptr.into_usize(), order))
+        doc_comment! {
+            doc_swap!(),
+            #[inline]
+            pub fn swap(&self, ptr: $ptr_type, order: Ordering) -> $ptr_type {
+                $ptr_ident::from_usize(self.inner.swap(ptr.into_usize(), order))
+            }
         }
 
-        #[inline]
-        pub fn compare_and_swap(
-            &self,
-            current: $ptr_type,
-            new: $ptr_type,
-            order: Ordering
-        ) -> $ptr_type {
-            $ptr_ident::from_usize(self.inner.compare_and_swap(
-                current.into_usize(),
-                new.into_usize(),
-                order
-            ))
+        doc_comment! {
+            doc_compare_and_swap!(),
+            #[inline]
+            pub fn compare_and_swap(
+                &self,
+                current: $ptr_type,
+                new: $ptr_type,
+                order: Ordering,
+            ) -> $ptr_type {
+                $ptr_ident::from_usize(self.inner.compare_and_swap(
+                    current.into_usize(),
+                    new.into_usize(),
+                    order,
+                ))
+            }
         }
 
-        #[inline]
-        pub fn compare_exchange(
-            &self,
-            current: $ptr_type,
-            new: $ptr_type,
-            success: Ordering,
-            failure: Ordering
-        ) -> Result<$ptr_type, $ptr_type> {
-            self.inner
-                .compare_exchange(current.into_usize(), new.into_usize(), success, failure)
-                .map(|_| current)
-                .map_err($ptr_ident::from_usize)
+        doc_comment! {
+            doc_compare_exchange!("strong", "`compare_exchange`"),
+            #[inline]
+            pub fn compare_exchange(
+                &self,
+                current: $ptr_type,
+                new: $ptr_type,
+                success: Ordering,
+                failure: Ordering,
+            ) -> Result<$ptr_type, $ptr_type> {
+                self.inner
+                    .compare_exchange(current.into_usize(), new.into_usize(), success, failure)
+                    .map(|_| current)
+                    .map_err($ptr_ident::from_usize)
+            }
         }
 
-        #[inline]
-        pub fn compare_exchange_weak(
-            &self,
-            current: $ptr_type,
-            new: $ptr_type,
-            success: Ordering,
-            failure: Ordering
-        ) -> Result<$ptr_type, $ptr_type> {
-            self.inner
-                .compare_exchange_weak(current.into_usize(), new.into_usize(), success, failure)
-                .map(|_| current)
-                .map_err($ptr_ident::from_usize)
+        doc_comment! {
+            doc_compare_exchange!("weak", "`compare_exchange`"),
+            #[inline]
+            pub fn compare_exchange_weak(
+                &self,
+                current: $ptr_type,
+                new: $ptr_type,
+                success: Ordering,
+                failure: Ordering,
+            ) -> Result<$ptr_type, $ptr_type> {
+                self.inner
+                    .compare_exchange_weak(current.into_usize(), new.into_usize(), success, failure)
+                    .map(|_| current)
+                    .map_err($ptr_ident::from_usize)
+            }
         }
     };
 }
 
 macro_rules! impl_atomic_inherent {
-(
+    (
     ptr_type = $ptr_type:ty,
     ptr_ident = $ptr_ident:ident,
     tag_type = $tag_type:ty,
@@ -120,15 +132,20 @@ macro_rules! impl_atomic_inherent {
             }
         }
 
-
-        #[inline]
-        pub fn fetch_or(&self, value: $tag_type, order: Ordering) -> $ptr_type {
-            todo!()
+        doc_comment! {
+            doc_fetch_or!("`fetch_or`", $example_atomic_path, $example_ptr_path),
+            #[inline]
+            pub fn fetch_or(&self, value: $tag_type, order: Ordering) -> $ptr_type {
+                todo!()
+            }
         }
 
-        #[inline]
-        pub fn fetch_xor(&self, value: $tag_type, order: Ordering) -> $ptr_type {
-            todo!()
+        doc_comment! {
+            doc_fetch_xor!("`fetch_xor`", $example_atomic_path, $example_ptr_path),
+            #[inline]
+            pub fn fetch_xor(&self, value: $tag_type, order: Ordering) -> $ptr_type {
+                todo!()
+            }
         }
 
         #[inline]
@@ -169,5 +186,5 @@ macro_rules! impl_atomic_pointer {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             fmt::Pointer::fmt(&self.load(Ordering::SeqCst), f)
         }
-    }
+    };
 }

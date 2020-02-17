@@ -1,4 +1,4 @@
-/// Collection of macros for generating documentation.
+/// All macros for generating documentation.
 
 /// A macro for generating arbitrary documented code items
 macro_rules! doc_comment {
@@ -385,6 +385,80 @@ macro_rules! doc_store {
     };
 }
 
+macro_rules! doc_swap {
+    () => {
+        "Stores a value into the atomic marked pointer and returns the previous value.\n\n\
+        `swap` takes an [`Ordering`] argument which describes the memory ordering of this \
+        operation. All ordering modes are possible. Note that using [`Acquire`][acq] makes the \
+        store part of this operation [`Relaxed`][rlx], and using [`Release`][rel] makes the load \
+        part [`Relaxed`][rlx].\n\n\
+        [rlx]: Ordering::Relaxed\n\
+        [acq]: Ordering::Acquire\n\
+        [rel]: Ordering::Release\n"
+    };
+}
+
+macro_rules! doc_compare_and_swap {
+    () => {
+        "Stores a value into the pointer if the current value is the same as `current`.\n\n\
+        The return value is always the previous value. If it is equal to `current`, then the value \
+        was updated.\n\n\
+        `compare_and_swap` also takes an [`Ordering`] argument which describes the memory ordering \
+        of this operation. Notice that even when using [`AcqRel`][acq_rel], the operation might \
+        fail and hence just perform an `Acquire` load, but not have `Release` semantics. Using \
+        [`Acquire`][acq] makes the store part of this operation [`Relaxed`][rlx] if it happens, \
+        and using [`Release`][rel] makes the load part [`Relaxed`][rlx].\n\n\
+        [rlx]: Ordering::Relaxed\n\
+        [acq]: Ordering::Acquire\n\
+        [rel]: Ordering::Release\n\
+        [acq_rel]: Ordering::AcqRel\n\
+        [seq_cst]: Ordering::SeqCst"
+    };
+}
+
+macro_rules! doc_compare_exchange {
+    ("strong", $fn_ident:expr) => {
+        concat!(
+            doc_compare_exchange!(),
+            "\n\n",
+            doc_compare_exchange!("ordering", $fn_ident),
+        )
+    };
+    ("weak", $fn_ident:expr) => {
+        concat!(
+            doc_compare_exchange!(),
+            "\n\n\
+            Unlinke `compare_exchange`, this function is allowed to spuriously fail even when the \
+            comparison succeeds, which can result in more efficient code on some platforms. The \
+            return value is a result indicating whether the new value was written and containing \
+            the previous value.\n\n",
+            doc_compare_exchange!("ordering", $fn_ident),
+        )
+    };
+    ("ordering", $fn_ident:expr) => {
+        concat!(
+            $fn_ident,
+            " takes takes two [`Ordering`] arguments to describe the memory ordering of this \
+            operation. The first describes the required ordering if the operation succeeds while \
+            the second describes the required ordering when the operation fails. Using \
+            [`Acquire`][acq] as success ordering makes store part of this operation \
+            [`Relaxed`][rlx], and using [`Release`][rel] makes the successful load \
+            [`Relaxed`][rlx]. The failure ordering can only be [`SeqCst`][seq_cst], \
+            [`Acquire`][acq] or [`Relaxed`][rlx] and must be equivalent or weaker than the success \
+            ordering.\n\n\
+            [rlx]: Ordering::Relaxed\n\
+            [acq]: Ordering::Acquire\n\
+            [rel]: Ordering::Release\n\
+            [seq_cst]: Ordering::SeqCst"
+        )
+    };
+    () => {
+        "Stores a value into the pointer if the current value is the same as `current`.\n\n\
+        The return value is a result indicating whether the new value was written and containing \
+        the previous value. On success this value is guaranteed to be equal to `current`."
+    }
+}
+
 macro_rules! doc_fetch_and_x {
     ("note") => {
         "This operation directly and unconditionally alters the internal numeric representation \
@@ -458,5 +532,65 @@ macro_rules! doc_fetch_sub {
     };
     () => {
         "Subtracts `value` from the current tag value, returning the previous marked pointer."
+    };
+}
+
+macro_rules! doc_fetch_or {
+    ($fn_ident:expr, $example_atomic_path:path, $example_ptr_path:path) => {
+        concat!(
+            doc_fetch_or!(),
+            "\n\n",
+            doc_fetch_and_x!("note"),
+            "\n\n",
+            doc_fetch_and_x!("ordering", $fn_ident),
+            "\n\n# Examples\n\n\
+           ```\nuse core::ptr;\n\
+           use core::sync::atomic::Ordering;\n\n\
+           type AtomicMaredPtr = ",
+            stringify!($example_atomic_path),
+            ";\ntype MarkedPtr = ",
+            stringify!($example_ptr_path),
+            ";\n\n\
+           let reference = &mut 1;\n\
+           let ptr = AtomicMarkedPtr::new(MarkedPtr::compose(reference, 0b10));\n\
+           assert_eq!(\n\
+               \tptr.fetch_or(0b11, Ordering::Relaxed).decompose(),\n\
+               \t(reference as *mut _, 0b11)\n\
+           );\n```"
+        )
+    };
+    () => {
+        "Performs a bitwise \"or\" of `value` with the current tag value, returning the previous \
+        marked pointer."
+    };
+}
+
+macro_rules! doc_fetch_xor {
+    ($fn_ident:expr, $example_atomic_path:path, $example_ptr_path:path) => {
+        concat!(
+            doc_fetch_xor!(),
+            "\n\n",
+            doc_fetch_and_x!("note"),
+            "\n\n",
+            doc_fetch_and_x!("ordering", $fn_ident),
+            "\n\n# Examples\n\n\
+           ```\nuse core::ptr;\n\
+           use core::sync::atomic::Ordering;\n\n\
+           type AtomicMaredPtr = ",
+            stringify!($example_atomic_path),
+            ";\ntype MarkedPtr = ",
+            stringify!($example_ptr_path),
+            ";\n\n\
+           let reference = &mut 1;\n\
+           let ptr = AtomicMarkedPtr::new(MarkedPtr::compose(reference, 0b10));\n\
+           assert_eq!(\n\
+               \tptr.fetch_xor(0b01, Ordering::Relaxed).decompose(),\n\
+               \t(reference as *mut _, 0b11)\n\
+           );\n```"
+        )
+    };
+    () => {
+        "Performs a bitwise \"xor\" of `value` with the current tag value, returning the previous \
+        marked pointer."
     };
 }
