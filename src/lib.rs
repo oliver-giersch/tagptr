@@ -43,12 +43,12 @@ use typenum::Unsigned;
 // AtomicMarkedPtr
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/// A raw pointer type which can be safely shared between threads and which
-/// can store additional information in its lower (unused) bits.
+/// A raw pointer type which can be safely shared between threads and which can
+/// store additional information in its lower (unused) bits.
 ///
-/// This type has the same in-memory representation as a `*mut T`. It is mostly
-/// identical to [`AtomicPtr`][atomic], except that all of its methods involve
-/// a [`MarkedPtr`] instead of `*mut T`.
+/// This type has the same in-memory representation as a `*mut T`.
+/// It is mostly identical to [`AtomicPtr`][atomic], except that all of its
+/// methods take or return a [`MarkedPtr`] instead of `*mut T`.
 ///
 /// [atomic]: core::sync::atomic::AtomicPtr
 pub struct AtomicMarkedPtr<T, N> {
@@ -77,6 +77,10 @@ pub struct MarkedPtr<T, N> {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// A non-nullable marked raw pointer type like [`NonNull`].
+///
+/// Note, that the upper bound for `N` is dictated by the alignment of `T`.
+/// A type with an alignment of `8` (e.g. a `usize` on 64-bit architectures) can
+/// have up to `3` mark bits.
 ///
 /// # Invariants
 ///
