@@ -1,11 +1,11 @@
 [package]
-name = "conquer_pointer"
+name = "conquer-pointer"
 version = "0.1.0"
 authors = ["Oliver Giersch"]
 license = "MIT/Apache-2.0"
 readme = "README.md"
-repository = "https://github.com/oliver-giersch/conquer_pointer.git"
-documentation = "https://docs.rs/conquer_pointer"
+repository = "https://github.com/oliver-giersch/conquer-pointer.git"
+documentation = "https://docs.rs/conquer-pointer"
 keywords = ["pointer", "tagging", "concurrent", "no_std"]
 edition = "2018"
 exclude = [".travis.yml"]
