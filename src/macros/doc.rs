@@ -594,3 +594,63 @@ macro_rules! doc_fetch_xor {
         marked pointer."
     };
 }
+
+macro_rules! doc_fetch_and {
+    ($fn_ident:expr, $example_atomic_path:path, $example_ptr_path:path) => {
+        concat!(
+            doc_fetch_and!(),
+            "\n\n",
+            doc_fetch_and_x!("note"),
+            "\n\n",
+            doc_fetch_and_x!("ordering", $fn_ident),
+            "\n\n# Examples\n\n\
+           ```\nuse core::ptr;\n\
+           use core::sync::atomic::Ordering;\n\n\
+           type AtomicMaredPtr = ",
+            stringify!($example_atomic_path),
+            ";\ntype MarkedPtr = ",
+            stringify!($example_ptr_path),
+            ";\n\n\
+           let reference = &mut 1;\n\
+           let ptr = AtomicMarkedPtr::new(MarkedPtr::compose(reference, 0b10));\n\
+           assert_eq!(\n\
+               \tptr.fetch_and(0b11, Ordering::Relaxed).decompose(),\n\
+               \t(reference as *mut _, 0b10)\n\
+           );\n```"
+        )
+    };
+    () => {
+        "Performs a bitwise \"and\" of `value` with the current tag value, returning the previous \
+        marked pointer."
+    };
+}
+
+macro_rules! doc_fetch_nand {
+    ($fn_ident:expr, $example_atomic_path:path, $example_ptr_path:path) => {
+        concat!(
+            doc_fetch_nand!(),
+            "\n\n",
+            doc_fetch_and_x!("note"),
+            "\n\n",
+            doc_fetch_and_x!("ordering", $fn_ident),
+            "\n\n# Examples\n\n\
+           ```\nuse core::ptr;\n\
+           use core::sync::atomic::Ordering;\n\n\
+           type AtomicMaredPtr = ",
+            stringify!($example_atomic_path),
+            ";\ntype MarkedPtr = ",
+            stringify!($example_ptr_path),
+            ";\n\n\
+           let reference = &mut 1;\n\
+           let ptr = AtomicMarkedPtr::new(MarkedPtr::compose(reference, 0b11));\n\
+           assert_eq!(\n\
+               \tptr.fetch_nand(0b11, Ordering::Relaxed).decompose(),\n\
+               \t(reference as *mut _, 0b00)\n\
+           );\n```"
+        )
+    };
+    () => {
+        "Performs a bitwise \"nand\" of `value` with the current tag value, returning the previous \
+        marked pointer."
+    };
+}

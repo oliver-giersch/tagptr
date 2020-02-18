@@ -120,7 +120,8 @@ macro_rules! impl_atomic_inherent {
             doc_fetch_add!("`fetch_add`", $example_atomic_path),
             #[inline]
             pub fn fetch_add(&self, value: $tag_type, order: Ordering) -> $ptr_type {
-                todo!()
+                let value = Self::calculate_tag_bits(value);
+                $ptr_ident::from_usize(self.inner.fetch_add(value, order))
             }
         }
 
@@ -128,7 +129,8 @@ macro_rules! impl_atomic_inherent {
             doc_fetch_sub!("`fetch_sub`", $example_atomic_path, $example_ptr_path),
             #[inline]
             pub fn fetch_sub(&self, value: $tag_type, order: Ordering) -> $ptr_type {
-                todo!()
+                let value = Self::calculate_tag_bits(value);
+                $ptr_ident::from_usize(self.inner.fetch_sub(value, order))
             }
         }
 
@@ -136,7 +138,8 @@ macro_rules! impl_atomic_inherent {
             doc_fetch_or!("`fetch_or`", $example_atomic_path, $example_ptr_path),
             #[inline]
             pub fn fetch_or(&self, value: $tag_type, order: Ordering) -> $ptr_type {
-                todo!()
+                let value = Self::calculate_tag_bits(value);
+                $ptr_ident::from_usize(self.inner.fetch_or(value, order))
             }
         }
 
@@ -144,18 +147,27 @@ macro_rules! impl_atomic_inherent {
             doc_fetch_xor!("`fetch_xor`", $example_atomic_path, $example_ptr_path),
             #[inline]
             pub fn fetch_xor(&self, value: $tag_type, order: Ordering) -> $ptr_type {
-                todo!()
+                let value = Self::calculate_tag_bits(value);
+                $ptr_ident::from_usize(self.inner.fetch_xor(value, order))
             }
         }
 
-        #[inline]
-        pub fn fetch_and(&self, value: $tag_type, order: Ordering) -> $ptr_type {
-            todo!()
+        doc_comment! {
+            doc_fetch_and!("`fetch_and`", $example_atomic_path, $example_ptr_path),
+            #[inline]
+            pub fn fetch_and(&self, value: $tag_type, order: Ordering) -> $ptr_type {
+                let value = Self::calculate_tag_bits(value);
+                $ptr_ident::from_usize(self.inner.fetch_and(value, order))
+            }
         }
 
-        #[inline]
-        pub fn fetch_nand(&self, value: $tag_type, order: Ordering) -> $ptr_type {
-            todo!()
+        doc_comment! {
+            doc_fetch_nand!("`fetch_nand`", $example_atomic_path, $example_ptr_path),
+            #[inline]
+            pub fn fetch_nand(&self, value: $tag_type, order: Ordering) -> $ptr_type {
+                let value = Self::calculate_tag_bits(value);
+                $ptr_ident::from_usize(self.inner.fetch_nand(value, order))
+            }
         }
     };
 }

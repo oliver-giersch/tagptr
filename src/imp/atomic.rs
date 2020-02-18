@@ -15,6 +15,11 @@ unsafe impl<T, N> Sync for AtomicMarkedPtr<T, N> {}
 
 impl<T, N> AtomicMarkedPtr<T, N> {
     impl_atomic_inherent_const!(ptr_type = MarkedPtr<T, N>, ptr_ident = MarkedPtr);
+
+    #[inline]
+    const fn calculate_tag_bits(value: usize) -> usize {
+        value
+    }
 }
 
 /********** impl inherent *************************************************************************/

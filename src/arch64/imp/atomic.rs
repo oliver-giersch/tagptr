@@ -2,7 +2,7 @@ use core::fmt;
 use core::marker::PhantomData;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::arch64::{AtomicMarkedPtr64, MarkedPtr64};
+use crate::arch64::{AtomicMarkedPtr64, MarkedPtr64, TAG_SHIFT};
 
 /********** impl Send + Sync **********************************************************************/
 
@@ -31,6 +31,11 @@ impl<T> AtomicMarkedPtr64<T> {
         example_atomic_path = conquer_pointer::arch64::AtomicMarkedPtr64<i32>,
         example_ptr_path = conquer_pointer::arch64::MarkedPtr64<i32>
     );
+
+    #[inline]
+    const fn calculate_tag_bits(value: u16) -> usize {
+        (value as usize) << TAG_SHIFT
+    }
 }
 
 /********** impl Debug ****************************************************************************/

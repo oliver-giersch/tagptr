@@ -37,6 +37,16 @@ pub struct AtomicMarkedPtr64<T> {
 // MarkedPtr64
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/// A raw, unsafe 64-bit pointer type like `*mut T` in which up to 16 of the
+/// pointer's upper bits can be used to store additional information (the
+/// *tag*).
+///
+/// Note, that using this type can only be safely used on 64-bit CPUs that use
+/// 48-bit virtual bits.
+/// Recent Intel architectures (*Sunny Cove* and later) use a 5-level page table
+/// structure and hence require 57-bit virtual addresses.
+/// Using this type on such a CPU could lead to silently corrupted pointers and
+/// it should only be used if the type of CPU the program will run on is known.
 #[repr(transparent)]
 pub struct MarkedPtr64<T> {
     inner: *mut T,
