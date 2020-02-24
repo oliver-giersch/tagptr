@@ -16,16 +16,15 @@
 // TODO: atomic doc examples
 // TODO: module/crate docs
 // TODO: missing impls
+// TODO: unit tests
 
 #![no_std]
 
 #[macro_use]
 mod macros;
 
-// this module relies on 48-bit virtual addresses and thus explicitly names each
-// supported architecture with this property.
-#[cfg(any(target_arch = "x86_64", target_arch = "powerpc64", target_arch = "aarch64"))]
-pub mod arch64;
+#[cfg(target_arch = "x86_64")]
+pub mod x86_64;
 
 mod imp;
 
