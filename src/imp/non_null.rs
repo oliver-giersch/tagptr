@@ -3,6 +3,7 @@ use core::convert::TryFrom;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::marker::PhantomData;
+use core::mem;
 use core::ptr::NonNull;
 
 use typenum::Unsigned;
@@ -63,12 +64,6 @@ impl<T, N> MarkedNonNull<T, N> {
     pub const fn into_marked_ptr(self) -> MarkedPtr<T, N> {
         MarkedPtr::new(self.inner.as_ptr())
     }
-
-    /// Creates a new pointer that is dangling but well aligned.
-    #[inline]
-    pub fn dangling() -> Self {
-        todo!()
-    }
 }
 
 /********** impl inherent *************************************************************************/
@@ -104,12 +99,20 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
         Self::try_from(marked_ptr)
     }
 
+    /// Creates a new pointer that is dangling but well aligned.
+    #[inline]
+    pub fn dangling() -> Self {
+        // safety: a type's alignment is never zero, so the result of max is always non-zero
+        unsafe { Self::from_usize(cmp::max(mem::align_of::<T>(), Self::TAG_MASK + 1)) }
+    }
+
     doc_comment! {
         doc_compose!(),
         /// # Panics
         ///
-        /// Panics if `ptr` is mis-aligned for `N` tag bits and could be parsed
-        /// as a marked `null` pointer.
+        /// Panics if `ptr` is mis-aligned for `N` tag bits and contains only
+        /// zero bits in the upper bits, i.e., it would be parsed as a marked
+        /// `null` pointer.
         #[inline]
         pub fn compose(ptr: NonNull<T>, tag: usize) -> Self {
             Self::try_compose(ptr, tag).expect(Self::COMPOSE_ERR_MSG)
@@ -121,8 +124,11 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
     ///
     /// # Errors
     ///
-    /// Fails if `ptr` is `null`, in which case a [`Null`] instance is returned
-    /// containing argument pointer's tag value.
+    /// Fails if `ptr` is mis-aligned for `N` tag bits and contains only
+    /// zero bits in the upper bits, i.e., it would be parsed as a marked
+    /// `null` pointer.
+    /// In this case a [`Null`] instance is returned containing the argument
+    /// pointer's tag value.
     #[inline]
     pub fn try_compose(ptr: NonNull<T>, tag: usize) -> Result<Self, Null> {
         match ptr.as_ptr() as usize & Self::POINTER_MASK {
@@ -229,42 +235,22 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
 
     #[inline]
     pub unsafe fn as_ref(&self) -> &T {
-        self.as_ref_unbounded()
-    }
-
-    #[inline]
-    pub unsafe fn as_ref_unbounded<'a>(self) -> &'a T {
         &*self.decompose_non_null().as_ptr()
     }
 
     #[inline]
     pub unsafe fn as_mut(&mut self) -> &mut T {
-        self.as_mut_unbounded()
-    }
-
-    #[inline]
-    pub unsafe fn as_mut_unbounded<'a>(self) -> &'a mut T {
         &mut *self.decompose_non_null().as_ptr()
     }
 
     #[inline]
     pub unsafe fn decompose_ref(&self) -> (&T, usize) {
-        self.decompose_ref_unbounded()
-    }
-
-    #[inline]
-    pub unsafe fn decompose_ref_unbounded<'a>(self) -> (&'a T, usize) {
         let (ptr, tag) = self.decompose();
         (&*ptr.as_ptr(), tag)
     }
 
     #[inline]
     pub unsafe fn decompose_mut(&mut self) -> (&mut T, usize) {
-        self.decompose_mut_unbounded()
-    }
-
-    #[inline]
-    pub unsafe fn decompose_mut_unbounded<'a>(self) -> (&'a mut T, usize) {
         let (ptr, tag) = self.decompose();
         (&mut *ptr.as_ptr(), tag)
     }

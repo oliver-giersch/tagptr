@@ -191,6 +191,19 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
 
     doc_comment! {
         doc_clear_tag!(),
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// use conquer_pointer::typenum::U2;
+        ///
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+        ///
+        /// let reference = &mut 1;
+        /// let ptr = MarkedPtr::compose(reference, 0b11);
+        ///
+        /// assert!(ptr.clear_tag().decompose(), (reference as *mut _, 0));
+        /// ```
         #[inline]
         pub fn clear_tag(self) -> Self {
             Self::new(self.decompose_ptr())
@@ -199,6 +212,19 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
 
     doc_comment! {
         doc_split_tag!(),
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// use conquer_pointer::typenum::U2;
+        ///
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+        ///
+        /// let reference = &mut 1;
+        /// let ptr = MarkedPtr::compose(reference, 0b11);
+        ///
+        /// assert!(ptr.split_tag(), (MarkedPtr::new(reference), 0b11));
+        /// ```
         #[inline]
         pub fn split_tag(self) -> (Self, usize) {
             let (ptr, tag) = self.decompose();
@@ -476,8 +502,8 @@ impl<T, N> From<&mut T> for MarkedPtr<T, N> {
 
 impl<T, N> From<NonNull<T>> for MarkedPtr<T, N> {
     #[inline]
-    fn from(non_null: NonNull<T>) -> Self {
-        Self::new(non_null.as_ptr())
+    fn from(ptr: NonNull<T>) -> Self {
+        Self::new(ptr.as_ptr())
     }
 }
 

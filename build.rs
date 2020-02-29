@@ -7,6 +7,6 @@ fn main() {
             cc::Build::new().file("extern/dwcas.c").compile("dwcas");
         }
     } else {
-        println!("building without 'cmpxchg16' support (x86_64).");
+        println!("building without 'cmpxchg16' support (no x86_64).");
     }
 }

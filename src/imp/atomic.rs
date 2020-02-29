@@ -116,13 +116,30 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     /// [rlx]: Ordering::Relaxed
     /// [acq]: Ordering::Acquire
     /// [rel]: Ordering::Release
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use core::ptr;
+    /// use core::sync::atomic::Ordering;
+    ///
+    /// use conquer_pointer::typenum::U2;
+    ///
+    /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, U2>;
+    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+    ///
+    /// let ptr = AtomicMarkedPtr::null();
+    /// let prev = ptr.swap(MarkedPtr::new(&mut 1), Ordering::Relaxed);
+    ///
+    /// assert!(prev.is_null());
+    /// ```
     pub fn swap(&self, ptr: MarkedPtr<T, N>, order: Ordering) -> MarkedPtr<T, N> {
         MarkedPtr::from_usize(self.inner.swap(ptr.into_usize(), order))
     }
 
     /// Stores a value into the pointer if the current value is the same as
     /// `current`.
-    ///        
+    ///
     /// The return value is always the previous value.
     /// If it is equal to `current`, then the value was updated.
     /// `compare_and_swap` also takes an [`Ordering`] argument which describes
@@ -138,7 +155,25 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     /// [acq]: Ordering::Acquire
     /// [rel]: Ordering::Release
     /// [acq_rel]: Ordering::AcqRel
-    /// [seq_cst]: Ordering::SeqCst"
+    /// [seq_cst]: Ordering::SeqCst
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use core::ptr;
+    /// use core::sync::atomic::Ordering;
+    ///
+    /// use conquer_pointer::typenum::U2;
+    ///
+    /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, U2>;
+    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+    ///
+    /// let ptr = AtomicMarkedPtr::null();
+    /// let new = MarkedPtr::new(&mut 1);
+    /// let prev = ptr.compare_and_swap(MarkedPtr::null(), new, Ordering::Relaxed);
+    ///
+    /// assert_eq!(prev, MarkedPtr::null());
+    /// ```
     #[inline]
     pub fn compare_and_swap(
         &self,
