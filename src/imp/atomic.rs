@@ -38,10 +38,12 @@ impl<T, N> AtomicMarkedPtr<T, N> {
         }
     }
 
-    /// Creates a new atomic marked pointer.
-    #[inline]
-    pub fn new(marked_ptr: MarkedPtr<T, N>) -> Self {
-        Self { inner: AtomicUsize::new(marked_ptr.into_usize()), _marker: PhantomData }
+    doc_comment! {
+        doc_atomic_new!(),
+        #[inline]
+        pub fn new(marked_ptr: MarkedPtr<T, N>) -> Self {
+            Self { inner: AtomicUsize::new(marked_ptr.into_usize()), _marker: PhantomData }
+        }
     }
 
     /// Consumes the atomic marked pointer and returns its contained value.
@@ -315,12 +317,18 @@ impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
     /// use conquer_pointer::typenum::U2;
     ///
     /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, U2>;
+    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
     ///
     /// let reference = &mut 1;
-    /// let ptr = AtomicMarkedPtr::from(reference);
+    /// let ptr = AtomicMarkedPtr::new(MarkedPtr::new(reference));
     ///
     /// assert_eq!(
     ///     ptr.fetch_add(1, Ordering::Relaxed).decompose(),
+    ///     (reference as *mut _, 0)
+    /// );
+    ///
+    /// assert_eq!(
+    ///     ptr.load(Ordering::Relaxed).decompose(),
     ///     (reference as *mut _, 0b01)
     /// );
     /// ```
@@ -364,6 +372,11 @@ impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
     ///
     /// assert_eq!(
     ///     ptr.fetch_sub(1, Ordering::Relaxed).decompose(),
+    ///     (reference as *mut _, 0b10)
+    /// );
+    ///
+    /// assert_eq!(
+    ///     ptr.load(Ordering::Relaxed).decompose(),
     ///     (reference as *mut _, 0b01)
     /// );
     /// ```
@@ -407,55 +420,17 @@ impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
     ///
     /// assert_eq!(
     ///     ptr.fetch_or(0b11, Ordering::Relaxed).decompose(),
+    ///     (reference as *mut _, 0b10)
+    /// );
+    ///
+    /// assert_eq!(
+    ///     ptr.load(Ordering::Relaxed).decompose(),
     ///     (reference as *mut _, 0b11)
     /// );
     /// ```
     #[inline]
     pub fn fetch_or(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
         MarkedPtr::from_usize(self.inner.fetch_or(value, order))
-    }
-
-    /// Performs a bitwise "xor" of `value` with the current tag value,
-    /// returning the previous marked pointer.
-    ///
-    /// This operation directly and unconditionally alters the internal numeric
-    /// representation of the atomic marked pointer.
-    /// Hence there is no way to reliably guarantee the operation only affects
-    /// the tag bits and does not overflow into the pointer bits.
-    ///
-    /// `fetch_xor` takes takes an [`Ordering`] argument which describes the
-    /// memory ordering of this operation.
-    /// All ordering modes are possible.
-    /// Note that using [`Acquire`][acq] makes the store part of this operation
-    /// [`Relaxed`][rlx] and using [`Release`][rel] makes the load part
-    /// [`Relaxed`][rlx].
-    ///
-    /// [rlx]: Ordering::Relaxed
-    /// [acq]: Ordering::Acquire
-    /// [rel]: Ordering::Release
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use core::ptr;
-    /// use core::sync::atomic::Ordering;
-    ///
-    /// use conquer_pointer::typenum::U2;
-    ///
-    /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, U2>;
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
-    ///
-    /// let reference = &mut 1;
-    /// let ptr = AtomicMarkedPtr::new(MarkedPtr::compose(reference, 0b10));
-    ///
-    /// assert_eq!(
-    ///     ptr.fetch_xor(0b01, Ordering::Relaxed).decompose(),
-    ///     (reference as *mut _, 0b11)
-    /// );
-    /// ```
-    #[inline]
-    pub fn fetch_xor(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
-        MarkedPtr::from_usize(self.inner.fetch_xor(value, order))
     }
 
     /// Performs a bitwise "and" of `value` with the current tag value,
@@ -491,57 +466,20 @@ impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
     /// let reference = &mut 1;
     /// let ptr = AtomicMarkedPtr::new(MarkedPtr::compose(reference, 0b10));
     ///
+    /// // fetch_x returns previous value
     /// assert_eq!(
     ///     ptr.fetch_and(0b11, Ordering::Relaxed).decompose(),
+    ///     (reference as *mut _, 0b10)
+    /// );
+    ///
+    /// assert_eq!(
+    ///     ptr.load(Ordering::Relaxed).decompose(),
     ///     (reference as *mut _, 0b10)
     /// );
     /// ```
     #[inline]
     pub fn fetch_and(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
-        MarkedPtr::from_usize(self.inner.fetch_and(value, order))
-    }
-
-    /// Performs a bitwise "nand" of `value` with the current tag value,
-    /// returning the previous marked pointer.
-    ///
-    /// This operation directly and unconditionally alters the internal numeric
-    /// representation of the atomic marked pointer.
-    /// Hence there is no way to reliably guarantee the operation only affects
-    /// the tag bits and does not overflow into the pointer bits.
-    ///
-    /// `fetch_nand` takes takes an [`Ordering`] argument which describes the
-    /// memory ordering of this operation.
-    /// All ordering modes are possible.
-    /// Note that using [`Acquire`][acq] makes the store part of this operation
-    /// [`Relaxed`][rlx] and using [`Release`][rel] makes the load part
-    /// [`Relaxed`][rlx].
-    ///
-    /// [rlx]: Ordering::Relaxed
-    /// [acq]: Ordering::Acquire
-    /// [rel]: Ordering::Release
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use core::ptr;
-    /// use core::sync::atomic::Ordering;
-    ///
-    /// use conquer_pointer::typenum::U2;
-    ///
-    /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, U2>;
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
-    ///
-    /// let reference = &mut 1;
-    /// let ptr = AtomicMarkedPtr::new(MarkedPtr::compose(reference, 0b11));
-    ///
-    /// assert_eq!(
-    ///     ptr.fetch_nand(0b11, Ordering::Relaxed).decompose(),
-    ///     (reference as *mut _, 0b00)
-    /// );
-    /// ```
-    #[inline]
-    pub fn fetch_nand(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
-        MarkedPtr::from_usize(self.inner.fetch_nand(value, order))
+        MarkedPtr::from_usize(self.inner.fetch_and(Self::POINTER_MASK | value, order))
     }
 }
 

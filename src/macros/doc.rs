@@ -45,6 +45,12 @@ macro_rules! doc_new {
     };
 }
 
+macro_rules! doc_atomic_new {
+    () => {
+        "Creates a new atomic marked pointer."
+    };
+}
+
 macro_rules! doc_from_usize {
     () => {
         "Creates a new pointer from the numeric (integer) representation of a \
@@ -256,5 +262,75 @@ macro_rules! doc_decompose_non_null {
 macro_rules! doc_decompose_tag {
     () => {
         "Decomposes the marked pointer, returning only the separated tag value."
+    };
+}
+
+macro_rules! doc_as_ref_or_mut {
+    ("safety") => {
+        "When calling this method, you have to ensure that *either* the \
+        pointer is `null` *or* all of the following is true:\n\n\
+        - it is properly aligned\n\
+        - it must point to an initialized instance of T; in particular, \
+        the pointer must be \"de-referencable\" in the sense defined \
+        [here].\n\n\
+        This applies even if the result of this method is unused! (The \
+        part about being initialized is not yet fully decided, but until \
+        it is the only safe approach is to ensure that they are indeed \
+        initialized.)\n\n\
+        Additionally, the lifetime `'a` returned is arbitrarily chosen and \
+        does not necessarily reflect the actual lifetime of the data. \
+        *You* must enforce Rust's aliasing rules. \
+        In particular, for the duration of this lifetime, the memory this \
+        pointer points to must not get accessed (read or written) through \
+        any other pointer.\n\n\
+        [here]: [std::ptr]"
+    };
+    ($ret_str:expr) => {
+        concat!(
+            "Decomposes the marked pointer, returning ",
+            $ret_str,
+            " reference and discarding the tag value."
+        )
+    };
+}
+
+macro_rules! doc_as_ref {
+    (@inner, $ret_str:expr) => {
+        concat!(
+            doc_as_ref_or_mut!($ret_str),
+            "\n\n# Safety\n\
+            While this method and its mutable counterpart are useful for \
+            null-safety, it is important to note that this is still an unsafe \
+            operation because the returned value could be pointing to invalid \
+            memory.\n\n",
+            doc_as_ref_or_mut!("safety")
+        )
+    };
+    ("nullable") => {
+        doc_as_ref!(@inner, "an optional")
+    };
+    ("non-nullable") => {
+        doc_as_ref!(@inner, "a")
+    };
+}
+
+macro_rules! doc_as_mut {
+    (@inner, $self_ident:ident, $ret_str:expr) => {
+        concat!(
+            doc_as_ref_or_mut!($ret_str),
+            "\n\n# Safety\n\
+            As with [`as_ref`][",
+            stringify!($self_ident),
+            "::as_ref], this is unsafe because it cannot verify the validity \
+            of the returned pointer, nor can it ensure that the lifetime `'a` \
+            returned is indeed a valid lifetime for the contained data.\n\n",
+            doc_as_ref_or_mut!("safety")
+        )
+    };
+    ("nullable", $self_ident:ident) => {
+        doc_as_mut!(@inner, $self_ident, "an optional *mutable*")
+    };
+    ("non-nullable", $self_ident:ident) => {
+        doc_as_mut!(@inner, $self_ident, "a *mutable*")
     };
 }

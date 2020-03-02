@@ -12,6 +12,8 @@ use core::arch::x86_64::cmpxchg16b;
 // AtomicMarkedPtr128
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/// A raw pointer type which can be safely shared between threads and which can
+/// store additional information in its lower (unused) bits.
 #[repr(C, align(16))]
 pub struct AtomicMarkedPtr128<T> {
     pub ptr: AtomicPtr<T>,
@@ -26,10 +28,13 @@ unsafe impl<T> Sync for AtomicMarkedPtr128<T> {}
 /********** impl inherent *************************************************************************/
 
 impl<T> AtomicMarkedPtr128<T> {
-    #[inline]
-    pub const fn new(marked_ptr: MarkedPtr128<T>) -> Self {
-        let (ptr, tag) = marked_ptr.decompose();
-        Self { ptr: AtomicPtr::new(ptr), tag: AtomicU64::new(tag) }
+    doc_comment! {
+        doc_atomic_new!(),
+        #[inline]
+        pub const fn new(marked_ptr: MarkedPtr128<T>) -> Self {
+            let (ptr, tag) = marked_ptr.decompose();
+            Self { ptr: AtomicPtr::new(ptr), tag: AtomicU64::new(tag) }
+        }
     }
 
     #[inline]
@@ -122,6 +127,25 @@ impl<T> MarkedPtr128<T> {
     }
 
     doc_comment! {
+        doc_compose!(),
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// type MarkedPtr128 = conquer_pointer::x86_64::MarkedPtr128<i32>;
+        ///
+        /// let reference = &mut 1;
+        /// let ptr = MarkedPtr128::compose(reference, 0b11);
+        ///
+        /// assert_eq!(ptr.decompose(), (reference as *mut _, 0b11));
+        /// ```
+        #[inline]
+        pub const fn compose(ptr: *mut T, tag: u64) -> Self {
+            Self { ptr, tag }
+        }
+    }
+
+    doc_comment! {
         doc_cast!(),
         pub const fn cast<U>(self) -> MarkedPtr128<U> {
             MarkedPtr128 { ptr: self.ptr.cast(), tag: self.tag }
@@ -157,6 +181,78 @@ impl<T> MarkedPtr128<T> {
         pub const fn decompose_tag(self) -> u64 {
             self.tag
         }
+    }
+
+    doc_comment! {
+        doc_as_ref!("nullable"),
+        #[inline]
+        pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
+            todo!()
+        }
+    }
+
+    doc_comment! {
+        doc_as_mut!("nullable", MarkedPtr128),
+        #[inline]
+        pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
+            self.ptr.as_mut()
+        }
+    }
+
+    /// Decomposes the marked pointer, returning an optional reference and the
+    /// separated tag.
+    ///
+    /// # Safety
+    ///
+    /// The same safety caveats as with [`as_ref`][MarkedPtr128::as_ref] apply.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use core::ptr;
+    ///
+    /// use conquer_pointer::typenum::U2;
+    ///
+    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+    ///
+    /// let reference = &1;
+    /// let ptr = MarkedPtr::compose(reference as *const _ as *mut _, 0b11);
+    ///
+    /// unsafe {
+    ///     assert_eq!(ptr.decompose_ref(), (Some(reference), 0b11));
+    /// }
+    /// ```
+    #[inline]
+    pub unsafe fn decompose_ref<'a>(self) -> (Option<&'a T>, u64) {
+        (self.as_ref(), self.decompose_tag())
+    }
+
+    /// Decomposes the marked pointer, returning an optional *mutable* reference
+    /// and the separated tag.
+    ///
+    /// # Safety
+    ///
+    /// The same safety caveats as with [`as_mut`][MarkedPtr128::as_mut] apply.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use core::ptr;
+    ///
+    /// use conquer_pointer::typenum::U2;
+    ///
+    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+    ///
+    /// let reference = &mut 1;
+    /// let ptr = MarkedPtr::compose(reference, 0b11);
+    ///
+    /// unsafe {
+    ///     assert_eq!(ptr.decompose_mut(), (Some(reference), 0b11));
+    /// }
+    /// ```
+    #[inline]
+    pub unsafe fn decompose_mut<'a>(self) -> (Option<&'a mut T>, u64) {
+        (self.as_mut(), self.decompose_tag())
     }
 }
 

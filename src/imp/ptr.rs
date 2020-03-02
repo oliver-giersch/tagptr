@@ -202,7 +202,7 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
         /// let reference = &mut 1;
         /// let ptr = MarkedPtr::compose(reference, 0b11);
         ///
-        /// assert!(ptr.clear_tag().decompose(), (reference as *mut _, 0));
+        /// assert_eq!(ptr.clear_tag().decompose(), (reference as *mut _, 0));
         /// ```
         #[inline]
         pub fn clear_tag(self) -> Self {
@@ -223,7 +223,7 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
         /// let reference = &mut 1;
         /// let ptr = MarkedPtr::compose(reference, 0b11);
         ///
-        /// assert!(ptr.split_tag(), (MarkedPtr::new(reference), 0b11));
+        /// assert_eq!(ptr.split_tag(), (MarkedPtr::new(reference), 0b11));
         /// ```
         #[inline]
         pub fn split_tag(self) -> (Self, usize) {
@@ -234,6 +234,19 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
 
     doc_comment! {
         doc_set_tag!(),
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// use conquer_pointer::typenum::U2;
+        ///
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+        ///
+        /// let reference = &mut 1;
+        /// let ptr = MarkedPtr::compose(reference, 0b11);
+        ///
+        /// assert_eq!(ptr.set_tag(0b01).decompose(), (reference as *mut _, 0b01));
+        /// ```
         #[inline]
         pub fn set_tag(self, tag: usize) -> Self {
             let ptr = self.decompose_ptr();
@@ -243,6 +256,19 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
 
     doc_comment! {
         doc_update_tag!(),
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// use conquer_pointer::typenum::U2;
+        ///
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+        ///
+        /// let reference = &mut 1;
+        /// let ptr = MarkedPtr::compose(reference, 0b11);
+        ///
+        /// assert_eq!(ptr.update_tag(|tag| tag - 1).decompose(), (reference as *mut _, 0b10));
+        /// ```
         #[inline]
         pub fn update_tag(self, func: impl FnOnce(usize) -> usize) -> Self {
             let (ptr, tag) = self.decompose();
@@ -252,6 +278,19 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
 
     doc_comment! {
         doc_add_tag!(),
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// use conquer_pointer::typenum::U2;
+        ///
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+        ///
+        /// let reference = &mut 1;
+        /// let ptr = MarkedPtr::compose(reference, 0b10);
+        ///
+        /// assert_eq!(ptr.add_tag(1).decompose(), (reference as *mut _, 0b11));
+        /// ```
         #[inline]
         pub fn add_tag(self, value: usize) -> Self {
             Self::from_usize(self.into_usize().wrapping_add(value))
@@ -260,6 +299,19 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
 
     doc_comment! {
         doc_sub_tag!(),
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// use conquer_pointer::typenum::U2;
+        ///
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+        ///
+        /// let reference = &mut 1;
+        /// let ptr = MarkedPtr::compose(reference, 0b10);
+        ///
+        /// assert_eq!(ptr.sub_tag(1).decompose(), (reference as *mut _, 0b01));
+        /// ```
         #[inline]
         pub fn sub_tag(self, value: usize) -> Self {
             Self::from_usize(self.into_usize().wrapping_sub(value))
@@ -290,107 +342,54 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
         }
     }
 
-    /// Decomposes the marked pointer, returning an optional reference and
-    /// discarding the tag value.
-    ///
-    /// # Safety
-    ///
-    /// While this method and its mutable counterpart are useful for
-    /// null-safety, it is important to note that this is still an unsafe
-    /// operation because the returned value could be pointing to invalid
-    /// memory.
-    ///
-    /// When calling this method, you have to ensure that *either* the pointer
-    /// is `null` *or* all of the following is true:
-    ///
-    /// - it is properly aligned
-    /// - it must point to an initialized instance of `T`; in particular, the
-    ///   pointer must be "de-referencable" in the sense defined [here].
-    ///
-    /// This applies even if the result of this method is unused!
-    /// (The part about being initialized is not yet fully decided, but until
-    /// it is, the only safe approach is to ensure that they are indeed
-    /// initialized.)
-    ///
-    /// Additionally, the lifetime `'a` returned is arbitrarily chosen and does
-    /// not necessarily reflect the actual lifetime of the data.
-    /// *You* must enforce Rust's aliasing rules. In particular, for the
-    /// duration of this lifetime, the memory the pointer points to must not get
-    /// mutated (except inside `UnsafeCell`).
-    ///
-    /// [here]: std::ptr#safety
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use core::ptr;
-    ///
-    /// use conquer_pointer::typenum::U2;
-    ///
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
-    ///
-    /// let reference = &1;
-    /// let ptr = MarkedPtr::compose(reference as *const _ as *mut _, 0b11);
-    ///
-    /// unsafe {
-    ///     assert_eq!(ptr.as_ref(), Some(reference));
-    /// }
-    /// ```
-    #[inline]
-    pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
-        self.decompose_ptr().as_ref()
+    doc_comment! {
+        doc_as_ref!("nullable"),
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// use core::ptr;
+        ///
+        /// use conquer_pointer::typenum::U2;
+        ///
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+        ///
+        /// let reference = &1;
+        /// let ptr = MarkedPtr::compose(reference as *const _ as *mut _, 0b11);
+        ///
+        /// unsafe {
+        ///     assert_eq!(ptr.as_ref(), Some(reference));
+        /// }
+        /// ```
+        #[inline]
+        pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
+            self.decompose_ptr().as_ref()
+        }
     }
 
-    /// Decomposes the marked pointer, returning an optional *mutable* reference
-    /// and discarding the tag value.
-    ///
-    /// # Safety
-    ///
-    /// As with [`as_ref`][MarkedPtr::as_ref], this is unsafe because it cannot
-    /// verify the validity of the returned pointer, nor can it ensure that the
-    /// lifetime `'a` returned is indeed a valid lifetime for the contained
-    /// data.
-    ///
-    /// When calling this method, you have to ensure that *either* the pointer
-    /// is `null` *or* all of the following is true:
-    ///
-    /// - it is properly aligned
-    /// - it must point to an initialized instance of T; in particular, the
-    ///   pointer must be "de-referencable" in the sense defined [here].
-    ///
-    /// This applies even if the result of this method is unused!
-    /// (The part about being initialized is not yet fully decided, but until
-    /// it is the only safe approach is to ensure that they are indeed
-    /// initialized.)
-    ///
-    /// Additionally, the lifetime `'a` returned is arbitrarily chosen and does
-    /// not necessarily reflect the actual lifetime of the data.
-    /// *You* must enforce Rust's aliasing rules.
-    /// In particular, for the duration of this lifetime, the memory this
-    /// pointer points to must not get accessed (read or written) through any
-    /// other pointer.
-    ///
-    /// [here]: std::ptr#safety
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use core::ptr;
-    ///
-    /// use conquer_pointer::typenum::U2;
-    ///
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
-    ///
-    /// let reference = &mut 1;
-    /// let ptr = MarkedPtr::compose(reference, 0b11);
-    ///
-    /// unsafe {
-    ///     assert_eq!(ptr.as_mut(), Some(reference));
-    /// }
-    /// ```
-    #[inline]
-    pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
-        self.decompose_ptr().as_mut()
+    doc_comment! {
+        doc_as_mut!("nullable", MarkedPtr),
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// use core::ptr;
+        ///
+        /// use conquer_pointer::typenum::U2;
+        ///
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+        ///
+        /// let reference = &mut 1;
+        /// let ptr = MarkedPtr::compose(reference, 0b11);
+        ///
+        /// unsafe {
+        ///     assert_eq!(ptr.as_mut(), Some(reference));
+        /// }
+        /// ```
+        #[inline]
+        pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
+            self.decompose_ptr().as_mut()
+        }
     }
 
     /// Decomposes the marked pointer, returning an optional reference and the
