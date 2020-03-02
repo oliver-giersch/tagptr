@@ -79,7 +79,7 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     /// [acq]: Ordering::Acquire
     /// [rel]: Ordering::Release
     /// [acq_rel]: Ordering::AcqRel
-    /// [seq_cst]: Ordering::SeqCst"
+    /// [seq_cst]: Ordering::SeqCst
     #[inline]
     pub fn load(&self, order: Ordering) -> MarkedPtr<T, N> {
         MarkedPtr::from_usize(self.inner.load(order))
@@ -334,6 +334,7 @@ impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
     /// ```
     #[inline]
     pub fn fetch_add(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
+        debug_assert!(value < Self::TAG_MASK, "`value` exceeds tag bits (would overflow)");
         MarkedPtr::from_usize(self.inner.fetch_add(value, order))
     }
 
@@ -382,6 +383,7 @@ impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
     /// ```
     #[inline]
     pub fn fetch_sub(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
+        debug_assert!(value < Self::TAG_MASK, "`value` exceeds tag bits (would underflow)");
         MarkedPtr::from_usize(self.inner.fetch_sub(value, order))
     }
 
@@ -430,7 +432,7 @@ impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
     /// ```
     #[inline]
     pub fn fetch_or(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
-        MarkedPtr::from_usize(self.inner.fetch_or(value, order))
+        MarkedPtr::from_usize(self.inner.fetch_or(Self::TAG_MASK & value, order))
     }
 
     /// Performs a bitwise "and" of `value` with the current tag value,

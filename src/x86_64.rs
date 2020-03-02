@@ -12,11 +12,16 @@ use core::arch::x86_64::cmpxchg16b;
 // AtomicMarkedPtr128
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/// A raw pointer type which can be safely shared between threads and which can
-/// store additional information in its lower (unused) bits.
+/// A raw 64-bit pointer type which can be safely shared between threads and
+/// which can store an additional 64-bit tag value alongside the pointer.
+///
+/// This types enables atomic operations on 128-bit wide (pointer, tag) tuples,
+/// allowing for the elementary synchronization operation *compare-and-swap*.
 #[repr(C, align(16))]
 pub struct AtomicMarkedPtr128<T> {
+    /// The (atomic) 64-bit pointer.
     pub ptr: AtomicPtr<T>,
+    /// The (atomic) 64-bit tag value.
     pub tag: AtomicU64,
 }
 
@@ -37,6 +42,27 @@ impl<T> AtomicMarkedPtr128<T> {
         }
     }
 
+    #[inline]
+    pub fn into_inner(self) -> MarkedPtr128<T> {
+        MarkedPtr128 { ptr: self.ptr.into_inner(), tag: self.tag.into_inner() }
+    }
+
+    /// Loads the value of the atomic marked 128-bit pointer.
+    ///
+    /// `load` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation.
+    /// Possible values are [`SeqCst`][seq_cst], [`Acquire`][acq] and
+    /// [`Relaxed`][rlx].
+    ///
+    /// # Panics
+    ///
+    /// Panics if `order` is [`Release`][rel] or [`AcqRel`][acq_rel].
+    ///
+    /// [rlx]: Ordering::Relaxed
+    /// [acq]: Ordering::Acquire
+    /// [rel]: Ordering::Release
+    /// [acq_rel]: Ordering::AcqRel
+    /// [seq_cst]: Ordering::SeqCst
     #[inline]
     pub fn load(&self, order: Ordering) -> MarkedPtr128<T> {
         match order {
