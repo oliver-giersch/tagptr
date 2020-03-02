@@ -560,4 +560,31 @@ mod tests {
         let ptr = MarkedPtr::from_usize(reference as *const i32 as usize | 0b1);
         assert_eq!(ptr.decompose(), (reference as *const _ as *mut _, 0b1));
     }
+
+    #[test]
+    fn compose() {
+        let reference = &mut 1;
+        let ptr1 = MarkedPtr::compose(reference, 0b11);
+        let ptr2 = MarkedPtr::compose(reference, 0b111);
+        assert_eq!(ptr1, ptr2);
+        assert_eq!(ptr1.decompose(), (reference as *mut _, 0b11));
+    }
+
+    #[test]
+    fn set_tag() {
+        let reference = &mut 1;
+        let ptr = MarkedPtr::compose(reference, 0b11);
+        // set_tag must silently truncate excess tag bits
+        assert_eq!(ptr.set_tag(0b111), ptr);
+    }
+
+    #[test]
+    fn overflow_tag() {
+        let reference = &mut 1;
+        let ptr = MarkedPtr::compose(reference, 0b11);
+        // add must cause overflow
+        assert_eq!(ptr.add_tag(1).into_usize(), reference as *mut _ as usize + 0b11 + 1);
+        // update must NOT cause overflow
+        assert_eq!(ptr.update_tag(|tag| tag + 1).decompose(), (reference as *mut _, 0));
+    }
 }
