@@ -93,6 +93,7 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     /// [`Relaxed`][rlx].
     ///
     /// # Panics
+    ///
     /// Panics if `order` is [`Acquire`][acq] or [`AcqRel`][acq_rel].
     ///
     /// [rlx]: Ordering::Relaxed
@@ -515,7 +516,7 @@ impl<T, N> From<*mut T> for AtomicMarkedPtr<T, N> {
 impl<T, N> From<MarkedPtr<T, N>> for AtomicMarkedPtr<T, N> {
     #[inline]
     fn from(ptr: MarkedPtr<T, N>) -> Self {
-        Self::new(ptr.into())
+        Self::new(ptr)
     }
 }
 

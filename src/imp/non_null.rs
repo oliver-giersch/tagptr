@@ -28,8 +28,8 @@ impl<T, N> MarkedNonNull<T, N> {
     ///
     /// # Safety
     ///
-    /// The caller has to ensure that `marked_ptr` is not `null` (neither
-    /// marked nor unmarked).    
+    /// The caller has to ensure that `marked_ptr` is not `null`.
+    /// This includes `null` pointers with non-zero tag values.
     #[inline]
     pub const unsafe fn new_unchecked(marked_ptr: MarkedPtr<T, N>) -> Self {
         Self { inner: NonNull::new_unchecked(marked_ptr.inner), _marker: PhantomData }
@@ -119,8 +119,8 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
         }
     }
 
-    /// Attempts to compose a new marked pointer from a raw `ptr` and a `tag`
-    /// value.
+    /// Attempts to compose a new marked pointer from a raw (non-null) `ptr` and
+    /// a `tag` value.
     ///
     /// # Errors
     ///
@@ -137,6 +137,12 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
         }
     }
 
+    /// Composes a new marked pointer from a raw (non-null) `ptr` and a `tag`
+    /// value without checking if `ptr` is valid.
+    ///
+    /// # Safety
+    ///
+    /// The caller has to ensure that `ptr` ...
     #[inline]
     pub unsafe fn compose_unchecked(ptr: NonNull<T>, tag: usize) -> Self {
         Self::new_unchecked(MarkedPtr::compose(ptr.as_ptr(), tag))
