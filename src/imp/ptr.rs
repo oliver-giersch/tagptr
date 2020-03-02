@@ -539,3 +539,25 @@ impl<T, N> Ord for MarkedPtr<T, N> {
 impl<T, N> Hash for MarkedPtr<T, N> {
     impl_hash!();
 }
+
+#[cfg(test)]
+mod tests {
+    use core::ptr;
+
+    type MarkedPtr = crate::MarkedPtr<i32, typenum::U2>;
+
+    #[test]
+    #[should_panic]
+    fn illegal_type() {
+        // todo: ideally, this would fail to compile (const-panics?)
+        type InvalidPtr = crate::MarkedPtr<i32, typenum::U3>;
+        let _ptr = InvalidPtr::compose(ptr::null_mut(), 0b100);
+    }
+
+    #[test]
+    fn from_usize() {
+        let reference = &1;
+        let ptr = MarkedPtr::from_usize(reference as *const i32 as usize | 0b1);
+        assert_eq!(ptr.decompose(), (reference as *const _ as *mut _, 0b1));
+    }
+}

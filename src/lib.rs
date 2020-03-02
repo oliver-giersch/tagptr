@@ -36,7 +36,7 @@ use core::sync::atomic::AtomicUsize;
 // public re-export(s)
 pub use typenum;
 
-use typenum::Unsigned;
+use typenum::{Unsigned, U0};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // AtomicMarkedPtr
@@ -50,7 +50,7 @@ use typenum::Unsigned;
 /// methods take or return a [`MarkedPtr`] instead of `*mut T`.
 ///
 /// [atomic]: core::sync::atomic::AtomicPtr
-pub struct AtomicMarkedPtr<T, N> {
+pub struct AtomicMarkedPtr<T, N = U0> {
     inner: AtomicUsize,
     _marker: PhantomData<(*mut T, N)>,
 }
@@ -66,7 +66,7 @@ pub struct AtomicMarkedPtr<T, N> {
 /// A type with an alignment of `8` (e.g. a `usize` on 64-bit architectures) can
 /// have up to `3` mark bits.
 #[repr(transparent)]
-pub struct MarkedPtr<T, N> {
+pub struct MarkedPtr<T, N = U0> {
     inner: *mut T,
     _marker: PhantomData<N>,
 }
@@ -93,7 +93,7 @@ pub struct MarkedPtr<T, N> {
 /// type enforces at compile-time that no value `N` can be instantiated that
 /// exceeds `T`'s inherent alignment.
 #[repr(transparent)]
-pub struct MarkedNonNull<T, N> {
+pub struct MarkedNonNull<T, N = U0> {
     inner: NonNull<T>,
     _marker: PhantomData<N>,
 }
