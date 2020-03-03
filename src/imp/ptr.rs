@@ -107,6 +107,13 @@ impl<T, N> MarkedPtr<T, N> {
     }
 
     doc_comment! {
+        doc_cast!(),
+        pub const fn cast<U>(self) -> MarkedPtr<U, N> {
+            MarkedPtr { inner: self.inner.cast(), _marker: PhantomData }
+        }
+    }
+
+    doc_comment! {
         doc_into_usize!(),
         ///
         /// # Examples
@@ -165,7 +172,6 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
         /// ```
         #[inline]
         pub fn compose(ptr: *mut T, tag: usize) -> Self {
-            crate::assert_alignment::<T, N>();
             Self::new(crate::compose(ptr, tag, Self::TAG_BITS))
         }
     }
@@ -547,11 +553,15 @@ mod tests {
     type MarkedPtr = crate::MarkedPtr<i32, typenum::U2>;
 
     #[test]
-    #[should_panic]
-    fn illegal_type() {
-        // todo: ideally, this would fail to compile (const-panics?)
-        type InvalidPtr = crate::MarkedPtr<i32, typenum::U3>;
-        let _ptr = InvalidPtr::compose(ptr::null_mut(), 0b100);
+    fn cast() {
+        type ErasedPtr = crate::MarkedPtr<(), typenum::U2>;
+
+        let reference = &mut 1;
+        let ptr = MarkedPtr::compose(reference, 0b11);
+        let cast: ErasedPtr = ptr.cast().set_tag(0b10);
+
+        assert_eq!(cast.into_usize(), reference as *mut _ as usize | 0b10);
+        assert_eq!(cast.cast(), MarkedPtr::compose(reference, 0b10));
     }
 
     #[test]
@@ -566,8 +576,9 @@ mod tests {
         let reference = &mut 1;
         let ptr1 = MarkedPtr::compose(reference, 0b11);
         let ptr2 = MarkedPtr::compose(reference, 0b111);
+        // compose silently truncates excess bits, so ptr1 and ptr2 are identical
         assert_eq!(ptr1, ptr2);
-        assert_eq!(ptr1.decompose(), (reference as *mut _, 0b11));
+        assert_eq!(ptr2.decompose(), (reference as *mut _, 0b11));
     }
 
     #[test]
@@ -575,16 +586,31 @@ mod tests {
         let reference = &mut 1;
         let ptr = MarkedPtr::compose(reference, 0b11);
         // set_tag must silently truncate excess tag bits
-        assert_eq!(ptr.set_tag(0b111), ptr);
+        assert_eq!(ptr, ptr.set_tag(0b111));
     }
 
     #[test]
     fn overflow_tag() {
         let reference = &mut 1;
         let ptr = MarkedPtr::compose(reference, 0b11);
-        // add must cause overflow
+
+        // add must cause overflow (corrupt the pointer)
         assert_eq!(ptr.add_tag(1).into_usize(), reference as *mut _ as usize + 0b11 + 1);
-        // update must NOT cause overflow
+        // update must only overflow the tag bits
         assert_eq!(ptr.update_tag(|tag| tag + 1).decompose(), (reference as *mut _, 0));
+    }
+
+    #[test]
+    fn underflow_tag() {
+        let reference = &mut 1;
+        let ptr = MarkedPtr::new(reference);
+
+        // sub_tag must underflow the entire pointer
+        assert_eq!(ptr.sub_tag(1).into_usize(), reference as *mut _ as usize - 1);
+        // update_tag must only underflow the tag value
+        assert_eq!(
+            ptr.update_tag(|tag| tag.wrapping_sub(1)).decompose(),
+            (reference as *mut _, 0b11)
+        );
     }
 }

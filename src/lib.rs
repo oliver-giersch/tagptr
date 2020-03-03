@@ -12,6 +12,29 @@
 //! such pointers with tag values.
 //!
 //! # Examples
+//!
+//! # Tag Bits and Type Alignment
+//!
+//! The number of unused lower bits in a pointer is directly determined by the
+//! alignment of the pointed-to type, as long as the pointer itself is
+//! well-aligned (e.g., not packed).
+//! For example, the `u64` type has an alignment of 8 (or 2^3) and, therefore,
+//! no well-aligned pointer to an `u64` uses its lower 3 bits.
+//! Consequently, constructing, e.g., a `MarkedPtr<u64, 4>` is most likely an
+//! error on the part of the user of this crate, since the resulting type would
+//! consider the bit at index 3 to be part of the tag value, although it in fact
+//! is part of the pointer itself.
+//! The [`has_sufficient_alignment`] and [`assert_alignment`] can be used to
+//! explicitly check for this property.
+//!
+//! There is, however, one exception in which using "ill-formed" marked pointer
+//! types is valid:
+//! When a well-formed marked pointer is constructed (e.g., a
+//! `MarkedPtr<u64, 3>`) and then later cast to a pointer to a type with a
+//! smaller alignment, e.g., a `MarkedPtr<(), 3>` for the purpose of type
+//! erasure.
+//! The type-erased pointer can then safely modify its tag value without
+//! corrupting the original pointer.
 
 // TODO: atomic doc examples
 // TODO: module/crate docs

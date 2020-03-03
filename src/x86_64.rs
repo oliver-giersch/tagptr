@@ -1,3 +1,31 @@
+//! Additional 128-bit marked pointer types for the x86-64 architecture only.
+//!
+//! At the time of writing, the x86-64 CPU architecture is the only 64-bit
+//! architecture providing an atomic instruction for realizing a double-wide
+//! compare-and-swap (DWCAS) operation, which is useful for many concurrent
+//! algorithms.
+//! This module provides the [`AtomicMarkedPtr128`] and [`MarkedPtr128`] types
+//! that can safely make use of this instruction.
+//! Unlike the architecture-independent marked pointer types provided by this
+//! crate, these allow storing a full 64-bit tag value in a separate memory word
+//! alongside the pointer itself.
+//! This means the tag value is practically unrestricted and very unlikely to
+//! ever overflow and puts no alignment restrictions on the pointer itself,
+//! because it does not need to fit in its lower bits.
+//!
+//! # A Note on Memory Orderings
+//!
+//! Rust's core (or standard) atomic types follow the C++11 pattern of supplying
+//! the required memory ordering specifications as function arguments.
+//! This module also follows this pattern for the sake of consistency, although
+//! this is somewhat nonsensical:
+//! Given that it is x86-64 only, any orderings other than [`SeqCst`] and
+//! [`Relaxed`] is ineffectual, since the CPU architecture inherently is
+//! strongly ordered.
+//! The `cmpxchg16b` instruction is also inherently sequentially consistent.
+//! Only the compiler *may* decide to reorder this instruction, if a weaker
+//! ordering was specified.   
+
 use core::fmt;
 use core::mem::transmute;
 use core::ptr;
