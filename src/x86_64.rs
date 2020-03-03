@@ -74,7 +74,7 @@ impl<T> AtomicMarkedPtr128<T> {
     }
 
     doc_comment! {
-        doc_atomic_inner_inner!(),
+        doc_atomic_into_inner!(),
         #[inline]
         pub fn into_inner(self) -> MarkedPtr128<T> {
             MarkedPtr128 { ptr: self.ptr.into_inner(), tag: self.tag.into_inner() }

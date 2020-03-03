@@ -335,7 +335,7 @@ macro_rules! doc_atomic_new {
     };
 }
 
-macro_rules! doc_atomic_inner_inner {
+macro_rules! doc_atomic_into_inner {
     () => {
         "Consumes the atomic marked pointer and returns its contained value.\n\n\
          This is safe because passing `self` by value guarantees no other \
