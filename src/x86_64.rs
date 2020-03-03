@@ -73,9 +73,12 @@ impl<T> AtomicMarkedPtr128<T> {
         }
     }
 
-    #[inline]
-    pub fn into_inner(self) -> MarkedPtr128<T> {
-        MarkedPtr128 { ptr: self.ptr.into_inner(), tag: self.tag.into_inner() }
+    doc_comment! {
+        doc_atomic_inner_inner!(),
+        #[inline]
+        pub fn into_inner(self) -> MarkedPtr128<T> {
+            MarkedPtr128 { ptr: self.ptr.into_inner(), tag: self.tag.into_inner() }
+        }
     }
 
     /// Loads the value of the atomic marked 128-bit pointer.
