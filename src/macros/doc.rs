@@ -45,12 +45,6 @@ macro_rules! doc_new {
     };
 }
 
-macro_rules! doc_atomic_new {
-    () => {
-        "Creates a new atomic marked pointer."
-    };
-}
-
 macro_rules! doc_from_usize {
     () => {
         "Creates a new pointer from the numeric (integer) representation of a \
@@ -332,5 +326,19 @@ macro_rules! doc_as_mut {
     };
     ("non-nullable", $self_ident:ident) => {
         doc_as_mut!(@inner, $self_ident, "a *mutable*")
+    };
+}
+
+macro_rules! doc_atomic_new {
+    () => {
+        "Creates a new atomic marked pointer."
+    };
+}
+
+macro_rules! doc_atomic_inner_inner {
+    () => {
+        "Consumes the atomic marked pointer and returns its contained value.\n\n\
+         This is safe because passing `self` by value guarantees no other \
+         threads are concurrently accessing the atomic pointer."
     };
 }

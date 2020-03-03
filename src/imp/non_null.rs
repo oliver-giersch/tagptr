@@ -102,6 +102,7 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
     /// Creates a new pointer that is dangling but well aligned.
     #[inline]
     pub fn dangling() -> Self {
+        // TODO: could be const fn with const generics
         // safety: a type's alignment is never zero, so the result of max is always non-zero
         unsafe { Self::from_usize(cmp::max(mem::align_of::<T>(), Self::TAG_MASK + 1)) }
     }

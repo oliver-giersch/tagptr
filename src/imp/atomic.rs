@@ -46,13 +46,12 @@ impl<T, N> AtomicMarkedPtr<T, N> {
         }
     }
 
-    /// Consumes the atomic marked pointer and returns its contained value.
-    ///
-    /// This is safe because passing `self` by value guarantees no other
-    /// threads are concurrently accessing the atomic pointer.
-    #[inline]
-    pub fn into_inner(self) -> MarkedPtr<T, N> {
-        MarkedPtr::from_usize(self.inner.into_inner())
+    doc_comment! {
+        doc_atomic_inner_inner!(),
+        #[inline]
+        pub fn into_inner(self) -> MarkedPtr<T, N> {
+            MarkedPtr::from_usize(self.inner.into_inner())
+        }
     }
 
     /// Returns a mutable reference to the underlying marked pointer.

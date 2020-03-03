@@ -19,12 +19,15 @@
 //! the required memory ordering specifications as function arguments.
 //! This module also follows this pattern for the sake of consistency, although
 //! this is somewhat nonsensical:
-//! Given that it is x86-64 only, any orderings other than [`SeqCst`] and
-//! [`Relaxed`] is ineffectual, since the CPU architecture inherently is
-//! strongly ordered.
+//! Given that it is x86-64 only, any orderings other than [`SeqCst`][seq_cst]
+//! and [`Relaxed`][rlx] is ineffectual, since the CPU architecture is
+//! inherently strongly ordered.
 //! The `cmpxchg16b` instruction is also inherently sequentially consistent.
 //! Only the compiler *may* decide to reorder this instruction, if a weaker
-//! ordering was specified.   
+//! ordering was specified.
+//!
+//! [rlx]: Ordering::Relaxed
+//! [seq_cst]: Ordering::SeqCst
 
 use core::fmt;
 use core::mem::transmute;
