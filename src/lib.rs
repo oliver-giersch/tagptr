@@ -11,8 +11,6 @@
 //! required functionality and logic for composing, decomposing and mutating
 //! such pointers with tag values.
 //!
-//! # Examples
-//!
 //! # Tag Bits and Type Alignment
 //!
 //! The number of unused lower bits in a pointer is directly determined by the
@@ -62,7 +60,7 @@ pub use typenum;
 use typenum::{Unsigned, U0};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-// AtomicMarkedPtr
+// AtomicMarkedPtr (impl in "imp/atomic.rs")
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// A raw pointer type which can be safely shared between threads and which can
@@ -79,15 +77,17 @@ pub struct AtomicMarkedPtr<T, N = U0> {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-// MarkedPtr
+// MarkedPtr (impl in "imp/ptr.rs")
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// A raw, unsafe pointer type like `*mut T` in which up to `N` of the pointer's
 /// lower bits can be used to store additional information (the *tag*).
 ///
-/// Note, that the upper bound for `N` is dictated by the alignment of `T`.
-/// A type with an alignment of `8` (e.g. a `usize` on 64-bit architectures) can
-/// have up to `3` mark bits.
+/// Note, that the logical upper bound for `N` is dictated by the alignment of
+/// type `T`.
+/// A type with an alignment of 8 (2^3), e.g., an `u64`, can safely store up to
+/// 3 tag bits.
+/// A type with an alignment of 16 (2^4) can safely store up to 4 tag bits, etc.
 #[repr(transparent)]
 pub struct MarkedPtr<T, N = U0> {
     inner: *mut T,
@@ -95,26 +95,26 @@ pub struct MarkedPtr<T, N = U0> {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-// MarkedNonNull
+// MarkedNonNull (impl in "imp/non_null.rs")
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// A non-nullable marked raw pointer type like [`NonNull`].
 ///
-/// Note, that the upper bound for `N` is dictated by the alignment of `T`.
-/// A type with an alignment of `8` (e.g. a `usize` on 64-bit architectures) can
-/// have up to `3` mark bits.
+/// Note, that the logical upper bound for `N` is dictated by the alignment of
+/// type `T`.
+/// A type with an alignment of 8 (2^3), e.g., an `u64`, can safely store up to
+/// 3 tag bits.
+/// A type with an alignment of 16 (2^4) can safely store up to 4 tag bits, etc.
 ///
 /// # Invariants
 ///
-/// Unlike [`NonNull`] this type does not permit values that would be `null`
+/// Unlike [`NonNull`], this type does not permit values that would be `null`
 /// pointers after its first `N` bits are parsed as the tag value.
 /// For instance, a pointer value `0x1`, despite not pointing at valid memory,
 /// is still valid for constructing a [`NonNull`] value.
 /// For any `N > 0`, however, this value is not a valid [`MarkedNonNull`], since
 /// it would be interpreted as a `null` pointer with a tag value of `1`.
-/// For regular, well-aligned pointers, this is usually not an issue and the
-/// type enforces at compile-time that no value `N` can be instantiated that
-/// exceeds `T`'s inherent alignment.
+/// For regular, well-aligned pointers, this is usually not an issue.
 #[repr(transparent)]
 pub struct MarkedNonNull<T, N = U0> {
     inner: NonNull<T>,
@@ -154,7 +154,7 @@ pub fn assert_alignment<T, N: Unsigned>() {
     );
 }
 
-/********** helper function(s) ********************************************************************/
+/********** helper functions **********************************************************************/
 
 /// Decomposes the integer representation of a `marked_ptr` for a given number
 /// of `tag_bits` into only a raw pointer.
