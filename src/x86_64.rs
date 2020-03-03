@@ -107,6 +107,31 @@ impl<T> AtomicMarkedPtr128<T> {
         }
     }
 
+    /// Stores a value into the pointer if the current value is the same as
+    /// `current`.
+    ///
+    /// The return value is always the previous value.
+    /// If it is equal to `current`, then the value was updated.
+    /// `compare_and_swap` also takes an [`Ordering`] argument which describes
+    /// the memory ordering of this operation.
+    /// Notice that even when using [`AcqRel`][acq_rel], the operation might
+    /// fail and hence just perform an `Acquire` load, but not have `Release`
+    /// semantics.
+    /// Using [`Acquire`][acq] makes the store part of this operation
+    /// [`Relaxed`][rlx] if it happens, and using [`Release`][rel] makes the
+    /// load part [`Relaxed`][rlx].
+    ///
+    /// [rlx]: Ordering::Relaxed
+    /// [acq]: Ordering::Acquire
+    /// [rel]: Ordering::Release
+    /// [acq_rel]: Ordering::AcqRel
+    /// [seq_cst]: Ordering::SeqCst
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use core::ptr;
+    /// ```
     #[inline]
     pub fn compare_and_swap(
         &self,
