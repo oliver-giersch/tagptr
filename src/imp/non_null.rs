@@ -240,22 +240,40 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
         }
     }
 
-    #[inline]
-    pub unsafe fn as_ref(&self) -> &T {
-        &*self.decompose_non_null().as_ptr()
+    doc_comment! {
+        doc_as_ref!("non-nullable"),
+        #[inline]
+        pub unsafe fn as_ref(&self) -> &T {
+            &*self.decompose_non_null().as_ptr()
+        }
     }
 
-    #[inline]
-    pub unsafe fn as_mut(&mut self) -> &mut T {
-        &mut *self.decompose_non_null().as_ptr()
+    doc_comment! {
+        doc_as_mut!("non-nullable"),
+        #[inline]
+        pub unsafe fn as_mut(&mut self) -> &mut T {
+            &mut *self.decompose_non_null().as_ptr()
+        }
     }
 
+    /// Decomposes the marked pointer, returning a reference and the separated
+    /// tag.
+    ///
+    /// # Safety
+    ///
+    /// The same safety caveats as with [`as_ref`][MarkedNonNull::as_ref] apply.
     #[inline]
     pub unsafe fn decompose_ref(&self) -> (&T, usize) {
         let (ptr, tag) = self.decompose();
         (&*ptr.as_ptr(), tag)
     }
 
+    /// Decomposes the marked pointer, returning a *mutable* reference and the
+    /// separated tag.
+    ///
+    /// # Safety
+    ///
+    /// The same safety caveats as with [`as_mut`][MarkedNonNull::as_mut] apply.
     #[inline]
     pub unsafe fn decompose_mut(&mut self) -> (&mut T, usize) {
         let (ptr, tag) = self.decompose();
