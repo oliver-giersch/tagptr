@@ -145,6 +145,29 @@ impl<T> AtomicMarkedPtr128<T> {
         }
     }
 
+    /// Stores a value into the pointer if the current value is the same as
+    /// `current`.
+    ///
+    /// The return value is a result indicating whether the new value was
+    /// written and containing the previous value.
+    /// On success this value is guaranteed to be equal to `current`.
+    ///
+    /// `compare_exchange` takes takes two [`Ordering`] arguments to describe
+    /// the memory ordering of this operation.
+    /// The first describes the required ordering if the operation succeeds
+    /// while the second describes the required ordering when the operation
+    /// fails.
+    /// Using [`Acquire`][acq] as success ordering makes store part of this
+    /// operation [`Relaxed`][rlx], and using [`Release`][rel] makes the
+    /// successful load [`Relaxed`][rlx].
+    /// The failure ordering can only be [`SeqCst`][seq_cst], [`Acquire`][acq]
+    /// or [`Relaxed`][rlx] and must be equivalent or weaker than the success
+    /// ordering.
+    ///
+    /// [rlx]: Ordering::Relaxed
+    /// [acq]: Ordering::Acquire
+    /// [rel]: Ordering::Release
+    /// [seq_cst]: Ordering::SeqCst
     #[inline]
     pub fn compare_exchange(
         &self,
