@@ -37,7 +37,7 @@ impl<T, N> MarkedPtr<T, N> {
         /// assert_eq!(ptr.decompose(), (ptr::null_mut(), 0));
         /// ```
         #[inline]
-        pub fn null() -> Self {
+        pub const fn null() -> Self {
             Self::new(ptr::null_mut())
         }
     }
