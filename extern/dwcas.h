@@ -10,7 +10,7 @@ struct dwcas_uint128_t {
 uint8_t dwcas_compare_exchange_128(
   struct dwcas_uint128_t* dst,
   struct dwcas_uint128_t old,
-  struct dwcas_uint128_t new,
+  struct dwcas_uint128_t new
 );
 
 #endif /* CONQUER_POINTER_DWCAS_H */
