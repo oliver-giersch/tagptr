@@ -249,7 +249,7 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
     }
 
     doc_comment! {
-        doc_as_mut!("non-nullable"),
+        doc_as_mut!("non-nullable", MarkedNonNull),
         #[inline]
         pub unsafe fn as_mut(&mut self) -> &mut T {
             &mut *self.decompose_non_null().as_ptr()
