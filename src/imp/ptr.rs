@@ -6,7 +6,7 @@ use core::ptr::{self, NonNull};
 
 use typenum::Unsigned;
 
-use crate::MarkedPtr;
+use crate::{MarkedPtr, MarkedNonNull};
 
 /********** impl Clone ****************************************************************************/
 
@@ -509,6 +509,15 @@ impl<T, N> From<NonNull<T>> for MarkedPtr<T, N> {
     #[inline]
     fn from(ptr: NonNull<T>) -> Self {
         Self::new(ptr.as_ptr())
+    }
+}
+
+/********** impl From (MarkedNonNull) *************************************************************/
+
+impl<T, N> From<MarkedNonNull<T, N>> for MarkedPtr<T, N> {
+    #[inline]
+    fn from(ptr: MarkedNonNull<T, N>) -> Self {
+        ptr.into_marked_ptr()
     }
 }
 
