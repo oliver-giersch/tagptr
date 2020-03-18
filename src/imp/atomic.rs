@@ -218,8 +218,7 @@ impl<T, N> AtomicMarkedPtr<T, N> {
         &self,
         current: MarkedPtr<T, N>,
         new: MarkedPtr<T, N>,
-        success: Ordering,
-        failure: Ordering,
+        (success, failure): (Ordering, Ordering),
     ) -> Result<MarkedPtr<T, N>, MarkedPtr<T, N>> {
         self.inner
             .compare_exchange(current.into_usize(), new.into_usize(), success, failure)
@@ -261,8 +260,7 @@ impl<T, N> AtomicMarkedPtr<T, N> {
         &self,
         current: MarkedPtr<T, N>,
         new: MarkedPtr<T, N>,
-        success: Ordering,
-        failure: Ordering,
+        (success, failure): (Ordering, Ordering),
     ) -> Result<MarkedPtr<T, N>, MarkedPtr<T, N>> {
         self.inner
             .compare_exchange_weak(current.into_usize(), new.into_usize(), success, failure)
