@@ -127,7 +127,6 @@ pub struct MarkedNonNull<T, N = U0> {
 
 /// A type representing a `null` pointer with potential tag bits.
 #[derive(Clone, Copy, Debug, Default, Hash, Eq, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub struct Null(pub usize);
 
 /********** public functions **********************************************************************/
