@@ -52,6 +52,13 @@ impl<T, N> MarkedNonNull<T, N> {
     }
 
     doc_comment! {
+        doc_cast!(),
+        pub const fn cast<U>(self) -> MarkedNonNull<U, N> {
+            MarkedNonNull { inner: self.inner.cast(), _marker: PhantomData }
+        }
+    }
+
+    doc_comment! {
         doc_into_usize!(),
         #[inline]
         pub fn into_usize(self) -> usize {
