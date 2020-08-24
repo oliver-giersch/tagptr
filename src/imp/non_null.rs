@@ -6,23 +6,40 @@ use core::marker::PhantomData;
 use core::mem;
 use core::ptr::NonNull;
 
-use typenum::Unsigned;
-
 use crate::{MarkedNonNull, MarkedPtr, Null};
 
 /********** impl Clone ****************************************************************************/
 
-impl<T, N> Clone for MarkedNonNull<T, N> {
+impl<T, const N: usize> Clone for MarkedNonNull<T, N> {
     impl_clone!();
 }
 
 /********** impl Copy *****************************************************************************/
 
-impl<T, N> Copy for MarkedNonNull<T, N> {}
+impl<T, const N: usize> Copy for MarkedNonNull<T, N> {}
 
-/********** impl inherent (const) *****************************************************************/
+/********** impl inherent *************************************************************************/
 
-impl<T, N> MarkedNonNull<T, N> {
+impl<T, const N: usize> MarkedNonNull<T, N> {
+    doc_comment! {
+        doc_tag_bits!(),
+        pub const TAG_BITS: usize = N;
+    }
+
+    doc_comment! {
+        doc_tag_mask!(),
+        pub const TAG_MASK: usize = crate::mark_mask::<T>(Self::TAG_BITS);
+    }
+
+    doc_comment! {
+        doc_ptr_mask!(),
+        pub const POINTER_MASK: usize = !Self::TAG_MASK;
+    }
+
+    const COMPOSE_ERR_MSG: &'static str =
+        "argument `ptr` is mis-aligned for `N` tag bits and could be parsed as marked `null` \
+        pointer.";
+
     /// Creates a new marked non-null pointer from `marked_ptr` without
     /// checking if it is `null`.
     ///
@@ -71,29 +88,6 @@ impl<T, N> MarkedNonNull<T, N> {
     pub const fn into_marked_ptr(self) -> MarkedPtr<T, N> {
         MarkedPtr::new(self.inner.as_ptr())
     }
-}
-
-/********** impl inherent *************************************************************************/
-
-impl<T, N: Unsigned> MarkedNonNull<T, N> {
-    doc_comment! {
-        doc_tag_bits!(),
-        pub const TAG_BITS: usize = N::USIZE;
-    }
-
-    doc_comment! {
-        doc_tag_mask!(),
-        pub const TAG_MASK: usize = crate::mark_mask::<T>(Self::TAG_BITS);
-    }
-
-    doc_comment! {
-        doc_ptr_mask!(),
-        pub const POINTER_MASK: usize = !Self::TAG_MASK;
-    }
-
-    const COMPOSE_ERR_MSG: &'static str =
-        "argument `ptr` is mis-aligned for `N` tag bits and could be parsed as marked `null` \
-        pointer.";
 
     /// Creates a new non-null pointer from `marked_ptr`.
     ///
@@ -290,19 +284,19 @@ impl<T, N: Unsigned> MarkedNonNull<T, N> {
 
 /********** impl Debug ****************************************************************************/
 
-impl<T, N: Unsigned> fmt::Debug for MarkedNonNull<T, N> {
+impl<T, const N: usize> fmt::Debug for MarkedNonNull<T, N> {
     impl_debug!("MarkedNonNull");
 }
 
 /********** impl Pointer **************************************************************************/
 
-impl<T, N: Unsigned> fmt::Pointer for MarkedNonNull<T, N> {
+impl<T, const N: usize> fmt::Pointer for MarkedNonNull<T, N> {
     impl_pointer!();
 }
 
 /********** impl From (&T) ************************************************************************/
 
-impl<T, N> From<&T> for MarkedNonNull<T, N> {
+impl<T, const N: usize> From<&T> for MarkedNonNull<T, N> {
     #[inline]
     fn from(reference: &T) -> Self {
         Self { inner: NonNull::from(reference), _marker: PhantomData }
@@ -311,7 +305,7 @@ impl<T, N> From<&T> for MarkedNonNull<T, N> {
 
 /********** impl From (&mut T) ********************************************************************/
 
-impl<T, N> From<&mut T> for MarkedNonNull<T, N> {
+impl<T, const N: usize> From<&mut T> for MarkedNonNull<T, N> {
     #[inline]
     fn from(reference: &mut T) -> Self {
         Self { inner: NonNull::from(reference), _marker: PhantomData }
@@ -320,35 +314,35 @@ impl<T, N> From<&mut T> for MarkedNonNull<T, N> {
 
 /********** impl PartialEq ************************************************************************/
 
-impl<T, N> PartialEq for MarkedNonNull<T, N> {
+impl<T, const N: usize> PartialEq for MarkedNonNull<T, N> {
     impl_partial_eq!();
 }
 
 /********** impl PartialOrd ***********************************************************************/
 
-impl<T, N> PartialOrd for MarkedNonNull<T, N> {
+impl<T, const N: usize> PartialOrd for MarkedNonNull<T, N> {
     impl_partial_ord!();
 }
 
 /********** impl Eq *******************************************************************************/
 
-impl<T, N> Eq for MarkedNonNull<T, N> {}
+impl<T, const N: usize> Eq for MarkedNonNull<T, N> {}
 
 /********** impl Ord ******************************************************************************/
 
-impl<T, N> Ord for MarkedNonNull<T, N> {
+impl<T, const N: usize> Ord for MarkedNonNull<T, N> {
     impl_ord!();
 }
 
 /********** impl Hash *****************************************************************************/
 
-impl<T, N> Hash for MarkedNonNull<T, N> {
+impl<T, const N: usize> Hash for MarkedNonNull<T, N> {
     impl_hash!();
 }
 
 /********** impl TryFrom (*mut T) *****************************************************************/
 
-impl<T, N: Unsigned> TryFrom<*mut T> for MarkedNonNull<T, N> {
+impl<T, const N: usize> TryFrom<*mut T> for MarkedNonNull<T, N> {
     type Error = Null;
 
     #[inline]
@@ -363,7 +357,7 @@ impl<T, N: Unsigned> TryFrom<*mut T> for MarkedNonNull<T, N> {
 
 /********** impl TryFrom (*const T) ***************************************************************/
 
-impl<T, N: Unsigned> TryFrom<*const T> for MarkedNonNull<T, N> {
+impl<T, const N: usize> TryFrom<*const T> for MarkedNonNull<T, N> {
     type Error = Null;
 
     #[inline]
@@ -374,7 +368,7 @@ impl<T, N: Unsigned> TryFrom<*const T> for MarkedNonNull<T, N> {
 
 /********** impl TryFrom (MarkedPtr) **************************************************************/
 
-impl<T, N: Unsigned> TryFrom<MarkedPtr<T, N>> for MarkedNonNull<T, N> {
+impl<T, const N: usize> TryFrom<MarkedPtr<T, N>> for MarkedNonNull<T, N> {
     type Error = Null;
 
     #[inline]
@@ -385,7 +379,7 @@ impl<T, N: Unsigned> TryFrom<MarkedPtr<T, N>> for MarkedNonNull<T, N> {
 
 /********** impl TryFrom (NonNull) ****************************************************************/
 
-impl<T, N: Unsigned> TryFrom<NonNull<T>> for MarkedNonNull<T, N> {
+impl<T, const N: usize> TryFrom<NonNull<T>> for MarkedNonNull<T, N> {
     type Error = Null;
 
     #[inline]

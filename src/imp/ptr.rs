@@ -4,23 +4,36 @@ use core::hash::{Hash, Hasher};
 use core::marker::PhantomData;
 use core::ptr::{self, NonNull};
 
-use typenum::Unsigned;
-
 use crate::{MarkedPtr, MarkedNonNull};
 
 /********** impl Clone ****************************************************************************/
 
-impl<T, N> Clone for MarkedPtr<T, N> {
+impl<T, const N: usize> Clone for MarkedPtr<T, N> {
     impl_clone!();
 }
 
 /********** impl Copy *****************************************************************************/
 
-impl<T, N> Copy for MarkedPtr<T, N> {}
+impl<T, const N: usize> Copy for MarkedPtr<T, N> {}
 
-/********** impl inherent (const) *****************************************************************/
+/********** impl inherent *************************************************************************/
 
-impl<T, N> MarkedPtr<T, N> {
+impl<T, const N: usize> MarkedPtr<T, N> {
+    doc_comment! {
+        doc_tag_bits!(),
+        pub const TAG_BITS: usize = N;
+    }
+
+    doc_comment! {
+        doc_tag_mask!(),
+        pub const TAG_MASK: usize = crate::mark_mask::<T>(Self::TAG_BITS);
+    }
+
+    doc_comment! {
+        doc_ptr_mask!(),
+        pub const POINTER_MASK: usize = !Self::TAG_MASK;
+    }
+
     doc_comment! {
         doc_null!(),
         ///
@@ -29,9 +42,7 @@ impl<T, N> MarkedPtr<T, N> {
         /// ```
         /// use core::ptr;
         ///
-        /// use conquer_pointer::typenum::U2;
-        ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
         ///
         /// let ptr = MarkedPtr::null();
         /// assert_eq!(ptr.decompose(), (ptr::null_mut(), 0));
@@ -50,9 +61,7 @@ impl<T, N> MarkedPtr<T, N> {
         /// ```
         /// use core::ptr;
         ///
-        /// use conquer_pointer::typenum::U2;
-        ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
         ///
         /// let reference = &mut 1;
         /// let ptr = MarkedPtr::new(reference);
@@ -72,9 +81,7 @@ impl<T, N> MarkedPtr<T, N> {
         /// ```
         /// use core::ptr;
         ///
-        /// use conquer_pointer::typenum::U2;
-        ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
         ///
         /// let ptr = MarkedPtr::from_usize(0b11);
         /// assert_eq!(ptr.decompose(), (ptr::null_mut(), 0b11));
@@ -93,9 +100,7 @@ impl<T, N> MarkedPtr<T, N> {
         /// ```
         /// use core::ptr;
         ///
-        /// use conquer_pointer::typenum::U2;
-        ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
         ///
         /// let ptr = MarkedPtr::from_usize(0b11);
         /// assert_eq!(ptr.into_raw(), 0b11 as *mut _);
@@ -121,9 +126,7 @@ impl<T, N> MarkedPtr<T, N> {
         /// ```
         /// use core::ptr;
         ///
-        /// use conquer_pointer::typenum::U2;
-        ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
         ///
         /// let ptr = MarkedPtr::from_usize(0b11);
         /// assert_eq!(ptr.into_usize(), 0b11);
@@ -132,25 +135,6 @@ impl<T, N> MarkedPtr<T, N> {
         pub fn into_usize(self) -> usize {
             self.inner as usize
         }
-    }
-}
-
-/********** impl inherent *************************************************************************/
-
-impl<T, N: Unsigned> MarkedPtr<T, N> {
-    doc_comment! {
-        doc_tag_bits!(),
-        pub const TAG_BITS: usize = N::USIZE;
-    }
-
-    doc_comment! {
-        doc_tag_mask!(),
-        pub const TAG_MASK: usize = crate::mark_mask::<T>(Self::TAG_BITS);
-    }
-
-    doc_comment! {
-        doc_ptr_mask!(),
-        pub const POINTER_MASK: usize = !Self::TAG_MASK;
     }
 
     doc_comment! {
@@ -161,7 +145,7 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
         /// ```
         /// use core::ptr;
         ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, conquer_pointer::typenum::U2>;
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
         ///
         /// let raw = &1 as *const i32 as *mut i32;
         /// let ptr = MarkedPtr::compose(raw, 0b11);
@@ -172,7 +156,7 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
         /// ```
         #[inline]
         pub fn compose(ptr: *mut T, tag: usize) -> Self {
-            Self::new(crate::compose(ptr, tag, Self::TAG_BITS))
+            Self::new(crate::compose::<T, N>(ptr, tag))
         }
     }
 
@@ -183,9 +167,7 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
     /// ```
     /// use core::ptr;
     ///
-    /// use conquer_pointer::typenum::U2;
-    ///
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
     ///
     /// let ptr = MarkedPtr::compose(ptr::null_mut(), 0b11);
     /// assert!(ptr.is_null());
@@ -201,9 +183,7 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
         /// # Examples
         ///
         /// ```
-        /// use conquer_pointer::typenum::U2;
-        ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
         ///
         /// let reference = &mut 1;
         /// let ptr = MarkedPtr::compose(reference, 0b11);
@@ -222,9 +202,7 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
         /// # Examples
         ///
         /// ```
-        /// use conquer_pointer::typenum::U2;
-        ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
         ///
         /// let reference = &mut 1;
         /// let ptr = MarkedPtr::compose(reference, 0b11);
@@ -244,9 +222,7 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
         /// # Examples
         ///
         /// ```
-        /// use conquer_pointer::typenum::U2;
-        ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
         ///
         /// let reference = &mut 1;
         /// let ptr = MarkedPtr::compose(reference, 0b11);
@@ -266,9 +242,7 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
         /// # Examples
         ///
         /// ```
-        /// use conquer_pointer::typenum::U2;
-        ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
         ///
         /// let reference = &mut 1;
         /// let ptr = MarkedPtr::compose(reference, 0b11);
@@ -288,9 +262,7 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
         /// # Examples
         ///
         /// ```
-        /// use conquer_pointer::typenum::U2;
-        ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
         ///
         /// let reference = &mut 1;
         /// let ptr = MarkedPtr::compose(reference, 0b10);
@@ -309,9 +281,7 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
         /// # Examples
         ///
         /// ```
-        /// use conquer_pointer::typenum::U2;
-        ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
         ///
         /// let reference = &mut 1;
         /// let ptr = MarkedPtr::compose(reference, 0b10);
@@ -356,9 +326,7 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
         /// ```
         /// use core::ptr;
         ///
-        /// use conquer_pointer::typenum::U2;
-        ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
         ///
         /// let reference = &1;
         /// let ptr = MarkedPtr::compose(reference as *const _ as *mut _, 0b11);
@@ -381,9 +349,7 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
         /// ```
         /// use core::ptr;
         ///
-        /// use conquer_pointer::typenum::U2;
-        ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
         ///
         /// let reference = &mut 1;
         /// let ptr = MarkedPtr::compose(reference, 0b11);
@@ -410,9 +376,7 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
     /// ```
     /// use core::ptr;
     ///
-    /// use conquer_pointer::typenum::U2;
-    ///
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
     ///
     /// let reference = &1;
     /// let ptr = MarkedPtr::compose(reference as *const _ as *mut _, 0b11);
@@ -438,9 +402,7 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
     /// ```
     /// use core::ptr;
     ///
-    /// use conquer_pointer::typenum::U2;
-    ///
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
     ///
     /// let reference = &mut 1;
     /// let ptr = MarkedPtr::compose(reference, 0b11);
@@ -457,19 +419,19 @@ impl<T, N: Unsigned> MarkedPtr<T, N> {
 
 /********** impl Debug ****************************************************************************/
 
-impl<T, N: Unsigned> fmt::Debug for MarkedPtr<T, N> {
+impl<T, const N: usize> fmt::Debug for MarkedPtr<T, N> {
     impl_debug!("MarkedPtr");
 }
 
 /********** impl Default **************************************************************************/
 
-impl<T, N> Default for MarkedPtr<T, N> {
+impl<T, const N: usize> Default for MarkedPtr<T, N> {
     impl_default!();
 }
 
 /********** impl From (*mut T) ********************************************************************/
 
-impl<T, N> From<*mut T> for MarkedPtr<T, N> {
+impl<T, const N: usize> From<*mut T> for MarkedPtr<T, N> {
     #[inline]
     fn from(ptr: *mut T) -> Self {
         Self::new(ptr)
@@ -478,7 +440,7 @@ impl<T, N> From<*mut T> for MarkedPtr<T, N> {
 
 /********** impl From (*const T) ******************************************************************/
 
-impl<T, N> From<*const T> for MarkedPtr<T, N> {
+impl<T, const N: usize> From<*const T> for MarkedPtr<T, N> {
     #[inline]
     fn from(ptr: *const T) -> Self {
         Self::new(ptr as _)
@@ -487,7 +449,7 @@ impl<T, N> From<*const T> for MarkedPtr<T, N> {
 
 /********** impl From (&T) ************************************************************************/
 
-impl<T, N> From<&T> for MarkedPtr<T, N> {
+impl<T, const N: usize> From<&T> for MarkedPtr<T, N> {
     #[inline]
     fn from(reference: &T) -> Self {
         Self::from(reference as *const _)
@@ -496,7 +458,7 @@ impl<T, N> From<&T> for MarkedPtr<T, N> {
 
 /********** impl From (&mut T) ********************************************************************/
 
-impl<T, N> From<&mut T> for MarkedPtr<T, N> {
+impl<T, const N: usize> From<&mut T> for MarkedPtr<T, N> {
     #[inline]
     fn from(reference: &mut T) -> Self {
         Self::from(reference as *const _)
@@ -505,7 +467,7 @@ impl<T, N> From<&mut T> for MarkedPtr<T, N> {
 
 /********** impl From (NonNull) *******************************************************************/
 
-impl<T, N> From<NonNull<T>> for MarkedPtr<T, N> {
+impl<T, const N: usize> From<NonNull<T>> for MarkedPtr<T, N> {
     #[inline]
     fn from(ptr: NonNull<T>) -> Self {
         Self::new(ptr.as_ptr())
@@ -514,7 +476,7 @@ impl<T, N> From<NonNull<T>> for MarkedPtr<T, N> {
 
 /********** impl From (MarkedNonNull) *************************************************************/
 
-impl<T, N> From<MarkedNonNull<T, N>> for MarkedPtr<T, N> {
+impl<T, const N: usize> From<MarkedNonNull<T, N>> for MarkedPtr<T, N> {
     #[inline]
     fn from(ptr: MarkedNonNull<T, N>) -> Self {
         ptr.into_marked_ptr()
@@ -523,47 +485,45 @@ impl<T, N> From<MarkedNonNull<T, N>> for MarkedPtr<T, N> {
 
 /********** impl PartialEq ************************************************************************/
 
-impl<T, N> PartialEq for MarkedPtr<T, N> {
+impl<T, const N: usize> PartialEq for MarkedPtr<T, N> {
     impl_partial_eq!();
 }
 
 /********** impl PartialOrd ***********************************************************************/
 
-impl<T, N> PartialOrd for MarkedPtr<T, N> {
+impl<T, const N: usize> PartialOrd for MarkedPtr<T, N> {
     impl_partial_ord!();
 }
 
 /********** impl Pointer **************************************************************************/
 
-impl<T, N: Unsigned> fmt::Pointer for MarkedPtr<T, N> {
+impl<T, const N: usize> fmt::Pointer for MarkedPtr<T, N> {
     impl_pointer!();
 }
 
 /********** impl Eq *******************************************************************************/
 
-impl<T, N> Eq for MarkedPtr<T, N> {}
+impl<T, const N: usize> Eq for MarkedPtr<T, N> {}
 
 /********** impl Ord ******************************************************************************/
 
-impl<T, N> Ord for MarkedPtr<T, N> {
+impl<T, const N: usize> Ord for MarkedPtr<T, N> {
     impl_ord!();
 }
 
 /********** impl Hash *****************************************************************************/
 
-impl<T, N> Hash for MarkedPtr<T, N> {
+impl<T, const N: usize> Hash for MarkedPtr<T, N> {
     impl_hash!();
 }
 
 #[cfg(test)]
 mod tests {
-    use core::ptr;
-
-    type MarkedPtr = crate::MarkedPtr<i32, typenum::U2>;
+    type MarkedPtr = crate::MarkedPtr<i32, 2>;
 
     #[test]
     fn cast() {
-        type ErasedPtr = crate::MarkedPtr<(), typenum::U2>;
+        type ErasedPtr = crate::MarkedPtr<(), 2>;
 
         let reference = &mut 1;
         let ptr = MarkedPtr::compose(reference, 0b11);

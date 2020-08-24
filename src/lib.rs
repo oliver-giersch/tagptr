@@ -39,6 +39,8 @@
 // TODO: missing impls
 // TODO: unit tests
 
+#![feature(min_const_generics)]
+
 #![no_std]
 
 #[macro_use]
@@ -54,11 +56,6 @@ use core::mem;
 use core::ptr::NonNull;
 use core::sync::atomic::AtomicUsize;
 
-// public re-export(s)
-pub use typenum;
-
-use typenum::{Unsigned, U0};
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // AtomicMarkedPtr (impl in "imp/atomic.rs")
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -71,9 +68,10 @@ use typenum::{Unsigned, U0};
 /// methods take or return a [`MarkedPtr`] instead of `*mut T`.
 ///
 /// [atomic]: core::sync::atomic::AtomicPtr
-pub struct AtomicMarkedPtr<T, N = U0> {
+#[repr(transparent)]
+pub struct AtomicMarkedPtr<T, const N: usize> {
     inner: AtomicUsize,
-    _marker: PhantomData<(*mut T, N)>,
+    _marker: PhantomData<*mut T>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -89,9 +87,9 @@ pub struct AtomicMarkedPtr<T, N = U0> {
 /// 3 tag bits.
 /// A type with an alignment of 16 (2^4) can safely store up to 4 tag bits, etc.
 #[repr(transparent)]
-pub struct MarkedPtr<T, N = U0> {
+pub struct MarkedPtr<T, const N: usize> {
     inner: *mut T,
-    _marker: PhantomData<N>,
+    _marker: PhantomData<()>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -116,9 +114,9 @@ pub struct MarkedPtr<T, N = U0> {
 /// it would be interpreted as a `null` pointer with a tag value of `1`.
 /// For regular, well-aligned pointers, this is usually not an issue.
 #[repr(transparent)]
-pub struct MarkedNonNull<T, N = U0> {
+pub struct MarkedNonNull<T, const N: usize> {
     inner: NonNull<T>,
-    _marker: PhantomData<N>,
+    _marker: PhantomData<()>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -127,6 +125,7 @@ pub struct MarkedNonNull<T, N = U0> {
 
 /// A type representing a `null` pointer with potential tag bits.
 #[derive(Clone, Copy, Debug, Default, Hash, Eq, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
 pub struct Null(pub usize);
 
 /********** public functions **********************************************************************/
@@ -146,9 +145,9 @@ pub const fn has_sufficient_alignment<T>(tag_bits: usize) -> bool {
 /// This function panics if the alignment of `U` is insufficient for storing
 /// `N` tag bits.
 #[inline]
-pub fn assert_alignment<T, N: Unsigned>() {
+pub fn assert_alignment<T, const N: usize>() {
     assert!(
-        has_sufficient_alignment::<T>(N::USIZE),
+        has_sufficient_alignment::<T>(N),
         "the respective type has insufficient alignment for storing N tag bits"
     );
 }
@@ -158,15 +157,15 @@ pub fn assert_alignment<T, N: Unsigned>() {
 /// Decomposes the integer representation of a `marked_ptr` for a given number
 /// of `tag_bits` into only a raw pointer.
 #[inline]
-const fn decompose_ptr<T>(marked_ptr: usize, tag_bits: usize) -> *mut T {
-    (marked_ptr & !mark_mask::<T>(tag_bits)) as *mut _
+const fn decompose_ptr<T>(ptr: usize, tag_bits: usize) -> *mut T {
+    (ptr & !mark_mask::<T>(tag_bits)) as *mut _
 }
 
 /// Decomposes the integer representation of a `marked_ptr` for a given number
 /// of `tag_bits` into only a separated tag value.
 #[inline]
-const fn decompose_tag<T>(marked_ptr: usize, tag_bits: usize) -> usize {
-    marked_ptr & mark_mask::<T>(tag_bits)
+const fn decompose_tag<T>(ptr: usize, tag_bits: usize) -> usize {
+    ptr & mark_mask::<T>(tag_bits)
 }
 
 /// Returns the (alignment-dependent) number of unused lower bits in a pointer
@@ -187,10 +186,10 @@ const fn mark_mask<T>(tag_bits: usize) -> usize {
 ///
 /// # Panics
 ///
-/// Panics in *debug* builds if `ptr` is not well aligned, i.e., if it contains
-/// any bits in its lower bits reserved for the tag value.
+/// Panics in *debug builds only* if `ptr` is not well aligned, i.e., if it
+/// contains any bits in its lower bits reserved for the tag value.
 #[inline]
-fn compose<T>(ptr: *mut T, tag: usize, tag_bits: usize) -> *mut T {
-    debug_assert_eq!(ptr as usize & mark_mask::<T>(tag_bits), 0);
-    ((ptr as usize) | (mark_mask::<T>(tag_bits) & tag)) as *mut _
+fn compose<T, const N: usize>(ptr: *mut T, tag: usize) -> *mut T {
+    debug_assert_eq!(ptr as usize & mark_mask::<T>(N), 0);
+    ((ptr as usize) | (mark_mask::<T>(N) & tag)) as *mut _
 }

@@ -2,18 +2,31 @@ use core::fmt;
 use core::marker::PhantomData;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-use typenum::Unsigned;
-
 use crate::{AtomicMarkedPtr, MarkedPtr};
 
 /********** impl Send + Sync **********************************************************************/
 
-unsafe impl<T, N> Send for AtomicMarkedPtr<T, N> {}
-unsafe impl<T, N> Sync for AtomicMarkedPtr<T, N> {}
+unsafe impl<T, const N: usize> Send for AtomicMarkedPtr<T, N> {}
+unsafe impl<T, const N: usize> Sync for AtomicMarkedPtr<T, N> {}
 
-/********** impl inherent (const) *****************************************************************/
+/********** impl inherent *************************************************************************/
 
-impl<T, N> AtomicMarkedPtr<T, N> {
+impl<T, const N: usize> AtomicMarkedPtr<T, N> {
+    doc_comment! {
+        doc_tag_bits!(),
+        pub const TAG_BITS: usize = N;
+    }
+
+    doc_comment! {
+        doc_tag_mask!(),
+        pub const TAG_MASK: usize = crate::mark_mask::<T>(Self::TAG_BITS);
+    }
+
+    doc_comment! {
+        doc_ptr_mask!(),
+        pub const POINTER_MASK: usize = !Self::TAG_MASK;
+    }
+
     doc_comment! {
         doc_null!(),
         ///
@@ -23,9 +36,7 @@ impl<T, N> AtomicMarkedPtr<T, N> {
         /// use core::ptr;
         /// use core::sync::atomic::Ordering;
         ///
-        /// use conquer_pointer::typenum::U2;
-        ///
-        /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, U2>;
+        /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, 2>;
         ///
         /// let ptr = AtomicMarkedPtr::null();
         /// assert_eq!(
@@ -125,10 +136,8 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     /// use core::ptr;
     /// use core::sync::atomic::Ordering;
     ///
-    /// use conquer_pointer::typenum::U2;
-    ///
-    /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, U2>;
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+    /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, 2>;
+    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
     ///
     /// let ptr = AtomicMarkedPtr::null();
     /// let prev = ptr.swap(MarkedPtr::new(&mut 1), Ordering::Relaxed);
@@ -165,10 +174,8 @@ impl<T, N> AtomicMarkedPtr<T, N> {
     /// use core::ptr;
     /// use core::sync::atomic::Ordering;
     ///
-    /// use conquer_pointer::typenum::U2;
-    ///
-    /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, U2>;
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+    /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, 2>;
+    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
     ///
     /// let ptr = AtomicMarkedPtr::null();
     /// let new = MarkedPtr::new(&mut 1);
@@ -267,25 +274,6 @@ impl<T, N> AtomicMarkedPtr<T, N> {
             .map(|_| current)
             .map_err(MarkedPtr::from_usize)
     }
-}
-
-/********** impl inherent *************************************************************************/
-
-impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
-    doc_comment! {
-        doc_tag_bits!(),
-        pub const TAG_BITS: usize = N::USIZE;
-    }
-
-    doc_comment! {
-        doc_tag_mask!(),
-        pub const TAG_MASK: usize = crate::mark_mask::<T>(Self::TAG_BITS);
-    }
-
-    doc_comment! {
-        doc_ptr_mask!(),
-        pub const POINTER_MASK: usize = !Self::TAG_MASK;
-    }
 
     /// Adds `value` to the current tag value, returning the previous marked
     /// pointer.
@@ -312,10 +300,8 @@ impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
     /// use core::ptr;
     /// use core::sync::atomic::Ordering;
     ///
-    /// use conquer_pointer::typenum::U2;
-    ///
-    /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, U2>;
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+    /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, 2>;
+    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
     ///
     /// let reference = &mut 1;
     /// let ptr = AtomicMarkedPtr::new(MarkedPtr::new(reference));
@@ -361,10 +347,8 @@ impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
     /// use core::ptr;
     /// use core::sync::atomic::Ordering;
     ///
-    /// use conquer_pointer::typenum::U2;
-    ///
-    /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, U2>;
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+    /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, 2>;
+    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
     ///
     /// let reference = &mut 1;
     /// let ptr = AtomicMarkedPtr::new(MarkedPtr::compose(reference, 0b10));
@@ -410,10 +394,8 @@ impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
     /// use core::ptr;
     /// use core::sync::atomic::Ordering;
     ///
-    /// use conquer_pointer::typenum::U2;
-    ///
-    /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, U2>;
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+    /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, 2>;
+    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
     ///
     /// let reference = &mut 1;
     /// let ptr = AtomicMarkedPtr::new(MarkedPtr::compose(reference, 0b10));
@@ -458,10 +440,8 @@ impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
     /// use core::ptr;
     /// use core::sync::atomic::Ordering;
     ///
-    /// use conquer_pointer::typenum::U2;
-    ///
-    /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, U2>;
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+    /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, 2>;
+    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
     ///
     /// let reference = &mut 1;
     /// let ptr = AtomicMarkedPtr::new(MarkedPtr::compose(reference, 0b10));
@@ -485,7 +465,7 @@ impl<T, N: Unsigned> AtomicMarkedPtr<T, N> {
 
 /********** impl Debug ****************************************************************************/
 
-impl<T, N: Unsigned> fmt::Debug for AtomicMarkedPtr<T, N> {
+impl<T, const N: usize> fmt::Debug for AtomicMarkedPtr<T, N> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (ptr, tag) = self.load(Ordering::SeqCst).decompose();
@@ -495,13 +475,13 @@ impl<T, N: Unsigned> fmt::Debug for AtomicMarkedPtr<T, N> {
 
 /********** impl Default **************************************************************************/
 
-impl<T, N> Default for AtomicMarkedPtr<T, N> {
+impl<T, const N: usize> Default for AtomicMarkedPtr<T, N> {
     impl_default!();
 }
 
 /********** impl From (*mut T) ********************************************************************/
 
-impl<T, N> From<*mut T> for AtomicMarkedPtr<T, N> {
+impl<T, const N: usize> From<*mut T> for AtomicMarkedPtr<T, N> {
     #[inline]
     fn from(ptr: *mut T) -> Self {
         Self::new(ptr.into())
@@ -510,7 +490,7 @@ impl<T, N> From<*mut T> for AtomicMarkedPtr<T, N> {
 
 /********** impl From (MarkedPtr<T, N>) ***********************************************************/
 
-impl<T, N> From<MarkedPtr<T, N>> for AtomicMarkedPtr<T, N> {
+impl<T, const N: usize> From<MarkedPtr<T, N>> for AtomicMarkedPtr<T, N> {
     #[inline]
     fn from(ptr: MarkedPtr<T, N>) -> Self {
         Self::new(ptr)
@@ -519,7 +499,7 @@ impl<T, N> From<MarkedPtr<T, N>> for AtomicMarkedPtr<T, N> {
 
 /********** impl Pointer **************************************************************************/
 
-impl<T, N: Unsigned> fmt::Pointer for AtomicMarkedPtr<T, N> {
+impl<T, const N: usize> fmt::Pointer for AtomicMarkedPtr<T, N> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Pointer::fmt(&self.load(Ordering::SeqCst), f)

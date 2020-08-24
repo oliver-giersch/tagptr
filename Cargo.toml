@@ -10,11 +10,5 @@ keywords = ["pointer", "tagging", "concurrent", "no_std"]
 edition = "2018"
 exclude = [".travis.yml"]
 
-[features]
-nightly = []
-
-[dependencies]
-typenum = "1.11.2"
-
 [build-dependencies]
 cc = "1.0.50"

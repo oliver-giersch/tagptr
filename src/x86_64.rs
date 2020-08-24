@@ -295,7 +295,7 @@ impl<T> MarkedPtr128<T> {
         doc_as_ref!("nullable"),
         #[inline]
         pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
-            todo!()
+            self.ptr.as_ref()
         }
     }
 
@@ -319,12 +319,10 @@ impl<T> MarkedPtr128<T> {
     /// ```
     /// use core::ptr;
     ///
-    /// use conquer_pointer::typenum::U2;
-    ///
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+    /// use conquer_pointer::x86_64::MarkedPtr128;
     ///
     /// let reference = &1;
-    /// let ptr = MarkedPtr::compose(reference as *const _ as *mut _, 0b11);
+    /// let ptr = MarkedPtr128::compose(reference as *const _ as *mut _, 0b11);
     ///
     /// unsafe {
     ///     assert_eq!(ptr.decompose_ref(), (Some(reference), 0b11));
@@ -347,12 +345,10 @@ impl<T> MarkedPtr128<T> {
     /// ```
     /// use core::ptr;
     ///
-    /// use conquer_pointer::typenum::U2;
-    ///
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, U2>;
+    /// use conquer_pointer::x86_64::MarkedPtr128;
     ///
     /// let reference = &mut 1;
-    /// let ptr = MarkedPtr::compose(reference, 0b11);
+    /// let ptr = MarkedPtr128::compose(reference, 0b11);
     ///
     /// unsafe {
     ///     assert_eq!(ptr.decompose_mut(), (Some(reference), 0b11));
