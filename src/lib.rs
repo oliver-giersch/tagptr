@@ -40,6 +40,7 @@
 // TODO: unit tests
 
 #![feature(min_const_generics)]
+#![cfg_attr(feature = "nightly", feature(stdsimd))]
 
 #![no_std]
 
