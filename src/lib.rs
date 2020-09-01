@@ -34,14 +34,8 @@
 //! The type-erased pointer can then safely modify its tag value without
 //! corrupting the original pointer.
 
-// TODO: atomic doc examples
-// TODO: module/crate docs
-// TODO: missing impls
-// TODO: unit tests
-
 #![feature(min_const_generics)]
 #![cfg_attr(feature = "nightly", feature(stdsimd))]
-
 #![no_std]
 
 #[macro_use]
@@ -128,6 +122,16 @@ pub struct MarkedNonNull<T, const N: usize> {
 #[derive(Clone, Copy, Debug, Default, Hash, Eq, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct Null(pub usize);
+
+/********** impl inherent *************************************************************************/
+
+impl Null {
+    /// Returns the tag value.
+    #[inline]
+    pub fn tag(self) -> usize {
+        self.0
+    }
+}
 
 /********** public functions **********************************************************************/
 
