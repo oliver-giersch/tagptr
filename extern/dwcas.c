@@ -1,6 +1,10 @@
-#include "dwcas.h"
+#include <stdint.h>
 
-uint8_t dwcas_compare_exchange_128(
+struct dwcas_uint128_t {
+  uint64_t first, second;
+};
+
+inline uint8_t dwcas_compare_exchange_128(
   struct dwcas_uint128_t* dst,
   struct dwcas_uint128_t old,
   struct dwcas_uint128_t new

@@ -6,12 +6,13 @@ license = "MIT/Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/oliver-giersch/conquer-pointer.git"
 documentation = "https://docs.rs/conquer-pointer"
-keywords = ["pointer", "tagging", "concurrent", "no_std"]
+keywords = ["pointer", "tagging", "concurrency"]
+categories = ["no-std"]
 edition = "2018"
-exclude = [".travis.yml"]
+exclude = [".github/"]
 
 [features]
 nightly = []
 
 [build-dependencies]
-cc = "1.0.50"
+cc = "1.0.62"

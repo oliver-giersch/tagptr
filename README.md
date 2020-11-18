@@ -28,10 +28,12 @@ Many concurrent lock-free algorithms for data structures require storing
 additional data in bitmasks that are composed together with pointers in their
 unused bits in order to fit into a single word.
 
-## Future Plans
+## Cargo Features
 
-Before reaching version `1.0.0` the current dependency on the `typenum` crate
-will be dropped and replaced with `const_generics`, once these become stable.
+Activating the `nightly` feature and disabling default features drops the `cc`
+dependency, but requires a nightly compiler and simplifies a build process by
+using the (unstable) `stdsimd` feature for implementing *double-word compare-
+and-swap* instead of an external C library with inline assembly.
 
 ## License
 
