@@ -195,7 +195,7 @@ impl<T> AtomicMarkedPtr128<T> {
 
 /// A tuple of a 64-bit raw `*mut T` pointer composed with a 64-bit tag value
 /// into a 128-bit tuple.
-#[repr(C)]
+#[repr(C, align(16))]
 pub struct MarkedPtr128<T> {
     /// The 64-bit raw pointer.
     pub ptr: *mut T,
