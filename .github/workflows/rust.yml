@@ -1,5 +1,4 @@
-name: Rust
-
+name: conquer-util tests
 on:
   push:
     branches: [ master ]
@@ -12,16 +11,10 @@ env:
 
 jobs:
   test:
+    name: cargo test
     runs-on: [ ubuntu-latest, windows-latest, macOS-latest ]
     steps:
-    - uses: actions/checkout@v2
-
-    - name: Run 'cargo test'
-      run: cargo test --verbose
-      with:
-        toolchain: nightly
-
-    - name: Run 'cargo test --features nightly'
-      run: cargo test --verbose --features nightly
-      with:
-        toolchain: nightly
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@nightly
+      - run: cargo test
+      - run: cargo test --features nightly
