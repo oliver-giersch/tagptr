@@ -20,6 +20,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+      with:
+        toolchain: nightly
     - name: Run tests
       run: cargo test --verbose
     - name: Run tests (w/ nightly feature)
