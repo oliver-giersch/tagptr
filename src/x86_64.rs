@@ -130,7 +130,17 @@ impl<T> AtomicMarkedPtr128<T> {
     /// # Examples
     ///
     /// ```
-    /// use core::ptr;
+    /// use core::sync::atomic::Ordering;
+    ///
+    /// use conquer_pointer::x86_64::{AtomicMarkedPtr128, MarkedPtr128};
+    ///
+    /// let raw = &mut 1 as *mut _;
+    ///
+    /// let expected = MarkedPtr128::new(raw);
+    /// let ptr = AtomicMarkedPtr128::new(expected);
+    /// let prev =
+    ///     ptr.compare_and_swap(expected, MarkedPtr128::compose(raw, 1), Ordering::Relaxed);
+    /// assert_eq!(prev, expected);
     /// ```
     #[inline]
     pub fn compare_and_swap(
@@ -177,13 +187,13 @@ impl<T> AtomicMarkedPtr128<T> {
         failure: Ordering,
     ) -> Result<MarkedPtr128<T>, MarkedPtr128<T>> {
         unsafe {
-            let dst = &self as *const _ as *mut u128;
+            let dst = self as *const AtomicMarkedPtr128<T> as *mut u128;
             let old_u128 = current.into_u128();
             let new_u128 = new.into_u128();
 
             match cmpxchg16b(dst, old_u128, new_u128, success, failure) {
                 res if res == old_u128 => Ok(current),
-                _ => Err(new),
+                res => Err(MarkedPtr128::from_u128(res)),
             }
         }
     }
@@ -195,7 +205,8 @@ impl<T> AtomicMarkedPtr128<T> {
 
 /// A tuple of a 64-bit raw `*mut T` pointer composed with a 64-bit tag value
 /// into a 128-bit tuple.
-#[repr(C, align(16))]
+#[derive(Ord, PartialOrd, Eq, PartialEq)]
+#[repr(C)]
 pub struct MarkedPtr128<T> {
     /// The 64-bit raw pointer.
     pub ptr: *mut T,
@@ -307,6 +318,11 @@ impl<T> MarkedPtr128<T> {
         }
     }
 
+    #[inline]
+    fn from_u128(val: u128) -> Self {
+        unsafe { transmute(val) }
+    }
+
     /// Decomposes the marked pointer, returning an optional reference and the
     /// separated tag.
     ///
@@ -381,15 +397,17 @@ mod ffi {
     #[inline]
     pub unsafe fn cmpxchg16b(
         dst: *mut u128,
-        old: u128,
+        mut old: u128,
         new: u128,
         _: Ordering,
         _: Ordering,
     ) -> u128 {
-        match dwcas_compare_exchange_128(dst as _, old.into(), new.into()) {
-            0 => old,
-            _ => *dst,
-        }
+        let old_ptr = &mut old as *mut u128 as *mut u64;
+        let new_ptr = &new as *const u128 as *const u64;
+
+        let _ = dwcas_compare_exchange_128(dst as _, old_ptr, new_ptr);
+
+        old
     }
 
     #[repr(C)]
@@ -403,7 +421,7 @@ mod ffi {
     }
 
     extern "C" {
-        fn dwcas_compare_exchange_128(dst: *mut U128, old: U128, new: U128) -> u8;
+        fn dwcas_compare_exchange_128(dst: *mut U128, old: *mut u64, new: *const u64) -> u8;
     }
 }
 
@@ -416,5 +434,54 @@ fn strongest_failure_ordering(order: Ordering) -> Ordering {
         Ordering::Acquire => Ordering::Acquire,
         Ordering::AcqRel => Ordering::Acquire,
         _ => unreachable!(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use core::sync::atomic::Ordering;
+
+    use super::{AtomicMarkedPtr128, MarkedPtr128};
+
+    #[test]
+    fn compare_exchange() {
+        let ptr = &mut 1 as *mut i32;
+
+        let current = MarkedPtr128::compose(ptr, 1);
+        let new = MarkedPtr128::compose(ptr, 2);
+
+        let atomic = AtomicMarkedPtr128::new(current);
+
+        let res = atomic.compare_exchange(current, new, Ordering::Relaxed, Ordering::Relaxed);
+        assert_eq!(res, Ok(current));
+
+        let res = atomic.compare_exchange(current, new, Ordering::Relaxed, Ordering::Relaxed);
+        assert_eq!(res, Err(new));
+    }
+
+    #[test]
+    fn compare_and_swap() {
+        let ptr = &mut 1 as *mut i32;
+
+        let current = MarkedPtr128::compose(ptr, 1);
+        let new = MarkedPtr128::compose(ptr, 2);
+
+        let atomic = AtomicMarkedPtr128::new(current);
+
+        let prev = atomic.compare_and_swap(current, new, Ordering::Relaxed);
+        assert_eq!(prev, current);
+
+        let prev = atomic.compare_and_swap(current, new, Ordering::Relaxed);
+        assert_eq!(prev, new);
+    }
+
+    #[test]
+    fn load() {
+        let ptr = &mut 1 as *mut i32;
+
+        let current = MarkedPtr128::new(ptr);
+
+        let atomic = AtomicMarkedPtr128::new(current);
+        assert_eq!(atomic.load(Ordering::Relaxed), current);
     }
 }
