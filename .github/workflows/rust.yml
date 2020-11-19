@@ -12,17 +12,16 @@ env:
 
 jobs:
   test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ ubuntu-latest, windows-latest, macOS-latest ]
-        rust: [ nightly ]
-
+    runs-on: [ ubuntu-latest, windows-latest, macOS-latest ]
     steps:
     - uses: actions/checkout@v2
+
+    - name: Run 'cargo test'
+      run: cargo test --verbose
       with:
         toolchain: nightly
-    - name: Run tests
-      run: cargo test --verbose
-    - name: Run tests (w/ nightly feature)
+
+    - name: Run 'cargo test --features nightly'
       run: cargo test --verbose --features nightly
+      with:
+        toolchain: nightly
