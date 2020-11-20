@@ -17,15 +17,12 @@ static inline memory_order mem_order_from_uint8_t(uint8_t order) {
 }
 
 bool dwcas_compare_exchange_128(
-  volatile struct dwcas_uint128_t* dst,
+  _Atomic(struct dwcas_uint128_t)* dst,
   struct dwcas_uint128_t*          old,
   struct dwcas_uint128_t           new,
   uint8_t                          success,
   uint8_t                          failure
 ) {
-  volatile int i = 0;
-  atomic_store(&i, 5);
-
   return atomic_compare_exchange_strong_explicit(
     dst, old, new,
     mem_order_from_uint8_t(success),
