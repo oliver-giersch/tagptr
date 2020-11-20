@@ -1,22 +1,30 @@
+#include <stdatomic.h>
 #include <stdint.h>
 
 struct dwcas_uint128_t {
   uint64_t first, second;
 };
 
-uint8_t dwcas_compare_exchange_128(
+static memory_order mem_order_from_uint8_t(uint8_t order) {
+  switch (order) {
+    case 0: return memory_order_relaxed;
+    case 1: return memory_order_acquire;
+    case 2: return memory_order_release;
+    case 3: return memory_order_acq_rel;
+    default: return memory_order_seq_cst;
+  }
+}
+
+bool dwcas_compare_exchange_128(
   volatile struct dwcas_uint128_t* dst,
   uint64_t* old,
-  const uint64_t* new
+  const uint64_t* new,
+  uint8_t success,
+  uint8_t failure,
 ) {
-  uint8_t res;
-  asm volatile(
-    "lock; cmpxchg16b %0; setz %1"
-      : "+m"(*dst), "=q"(res), "+a"(old[0]), "+d"(old[1])
-      : "b"(new[0]),
-        "c"(new[1])
-      : "memory"
+  return atomic_compare_exchange_strong(
+    dst, old, new,
+    mem_order_from_uint8_t(success),
+    mem_order_from_uint8_t(failure),
   );
-
-  return res;
 }

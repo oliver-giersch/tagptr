@@ -395,17 +395,34 @@ mod ffi {
     use core::sync::atomic::Ordering;
 
     #[inline]
+    const fn ordering_to_u8(order: Ordering) -> u8 {
+        match order {
+            Ordering::Relaxed => 0,
+            Ordering::Acquire => 1,
+            Ordering::Release => 2,
+            Ordering::AcqRel => 3,
+            Ordering::SeqCst => 4,
+        }
+    }
+
+    #[inline]
     pub unsafe fn cmpxchg16b(
         dst: *mut u128,
         mut old: u128,
         new: u128,
-        _: Ordering,
-        _: Ordering,
+        success: Ordering,
+        failure: Ordering,
     ) -> u128 {
         let old_ptr = &mut old as *mut u128 as *mut u64;
         let new_ptr = &new as *const u128 as *const u64;
 
-        let _ = dwcas_compare_exchange_128(dst as _, old_ptr, new_ptr);
+        let _ = dwcas_compare_exchange_128(
+            dst as _,
+            old_ptr,
+            new_ptr,
+            ordering_to_u8(success),
+            ordering_to_u8(failure),
+        );
 
         old
     }
@@ -421,7 +438,13 @@ mod ffi {
     }
 
     extern "C" {
-        fn dwcas_compare_exchange_128(dst: *mut U128, old: *mut u64, new: *const u64) -> u8;
+        fn dwcas_compare_exchange_128(
+            dst: *mut U128,
+            old: *mut u64,
+            new: *const u64,
+            success: u8,
+            failure: u8,
+        ) -> bool;
     }
 }
 
