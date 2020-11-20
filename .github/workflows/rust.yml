@@ -1,4 +1,4 @@
-name: conquer-util tests
+name: conquer-pointer tests
 on:
   push:
     branches: [ master ]
