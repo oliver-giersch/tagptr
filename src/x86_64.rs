@@ -402,6 +402,7 @@ mod ffi {
             Ordering::Release => 2,
             Ordering::AcqRel => 3,
             Ordering::SeqCst => 4,
+            _ => 5,
         }
     }
 
@@ -413,13 +414,13 @@ mod ffi {
         success: Ordering,
         failure: Ordering,
     ) -> u128 {
-        let old_ptr = &mut old as *mut u128 as *mut u64;
-        let new_ptr = &new as *const u128 as *const u64;
+        let old_ptr = &mut old as *mut u128 as *mut U128;
+        let new = new.into();
 
         let _ = dwcas_compare_exchange_128(
             dst as _,
             old_ptr,
-            new_ptr,
+            new,
             ordering_to_u8(success),
             ordering_to_u8(failure),
         );
@@ -440,8 +441,8 @@ mod ffi {
     extern "C" {
         fn dwcas_compare_exchange_128(
             dst: *mut U128,
-            old: *mut u64,
-            new: *const u64,
+            old: *mut U128,
+            new: U128,
             success: u8,
             failure: u8,
         ) -> bool;

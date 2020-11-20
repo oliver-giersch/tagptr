@@ -10,6 +10,7 @@ keywords = ["pointer", "tagging", "concurrency"]
 categories = ["no-std"]
 edition = "2018"
 exclude = [".github/"]
+links = "atomic"
 
 [features]
 nightly = []
