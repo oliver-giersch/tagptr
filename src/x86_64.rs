@@ -29,6 +29,9 @@
 //! [rlx]: Ordering::Relaxed
 //! [seq_cst]: Ordering::SeqCst
 
+use core::arch::x86_64::__cpuid_count;
+#[cfg(feature = "nightly")]
+use core::arch::x86_64::cmpxchg16b;
 use core::fmt;
 use core::mem::transmute;
 use core::ptr;
@@ -36,8 +39,32 @@ use core::sync::atomic::{AtomicPtr, AtomicU64, Ordering};
 
 #[cfg(not(feature = "nightly"))]
 use self::ffi::cmpxchg16b;
-#[cfg(feature = "nightly")]
-use core::arch::x86_64::cmpxchg16b;
+
+/// Checks if the CPU model in use supports the `cmpxchg16b`
+/// instruction at runtime and returns a [`DwcasToken`] in case it does.
+///
+/// The `cmpxchg16b` is practically universally supported on all x86-64 CPUs
+/// except on some very old ones.
+/// By requiring a token backed by a previous runtime check for all functions
+/// relying on the availabilty of this instruction, undefined behaviour can be
+/// ruled out, even on the rare platforms that don't support it.
+///
+/// It is fully sufficient to check this only once, since the resulting token
+/// can be freely copied and shared.
+pub fn get_dwcas_token() -> Option<DwcasToken> {
+    unsafe {
+        if (__cpuid_count(1, 0).ecx & (1 << 13)) != 0 {
+            Some(DwcasToken(()))
+        } else {
+            None
+        }
+    }
+}
+
+/// The token indicating the availability of the `cmpxchg16b` instruction on the
+/// CPU model in use during runtime.
+#[derive(Copy, Clone, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
+pub struct DwcasToken(());
 
 // *************************************************************************************************
 // AtomicMarkedPtr128
@@ -98,10 +125,10 @@ impl<T> AtomicMarkedPtr128<T> {
     /// [acq_rel]: Ordering::AcqRel
     /// [seq_cst]: Ordering::SeqCst
     #[inline]
-    pub fn load(&self, order: Ordering) -> MarkedPtr128<T> {
+    pub fn load(&self, order: Ordering, token: DwcasToken) -> MarkedPtr128<T> {
         match order {
             Ordering::Relaxed | Ordering::Acquire | Ordering::SeqCst => {
-                self.compare_and_swap(MarkedPtr128::null(), MarkedPtr128::null(), order)
+                self.compare_and_swap(MarkedPtr128::null(), MarkedPtr128::null(), order, token)
             }
             _ => panic!(),
         }
@@ -132,14 +159,16 @@ impl<T> AtomicMarkedPtr128<T> {
     /// ```
     /// use core::sync::atomic::Ordering;
     ///
-    /// use conquer_pointer::x86_64::{AtomicMarkedPtr128, MarkedPtr128};
+    /// use conquer_pointer::x86_64::{get_dwcas_token, AtomicMarkedPtr128, DwcasToken, MarkedPtr128};
+    ///
+    /// let token = get_dwcas_token().expect("CPU model does not support DWCAS instruction");
     ///
     /// let raw = &mut 1 as *mut _;
     ///
     /// let expected = MarkedPtr128::new(raw);
     /// let ptr = AtomicMarkedPtr128::new(expected);
     /// let prev =
-    ///     ptr.compare_and_swap(expected, MarkedPtr128::compose(raw, 1), Ordering::Relaxed);
+    ///     ptr.compare_and_swap(expected, MarkedPtr128::compose(raw, 1), Ordering::Relaxed, token);
     /// assert_eq!(prev, expected);
     /// ```
     #[inline]
@@ -148,8 +177,10 @@ impl<T> AtomicMarkedPtr128<T> {
         current: MarkedPtr128<T>,
         new: MarkedPtr128<T>,
         order: Ordering,
+        token: DwcasToken,
     ) -> MarkedPtr128<T> {
-        match self.compare_exchange(current, new, order, strongest_failure_ordering(order)) {
+        let failure = strongest_failure_ordering(order);
+        match self.compare_exchange(current, new, order, failure, token) {
             Ok(res) => res,
             Err(res) => res,
         }
@@ -185,6 +216,7 @@ impl<T> AtomicMarkedPtr128<T> {
         new: MarkedPtr128<T>,
         success: Ordering,
         failure: Ordering,
+        _: DwcasToken,
     ) -> Result<MarkedPtr128<T>, MarkedPtr128<T>> {
         unsafe {
             let dst = self as *const AtomicMarkedPtr128<T> as *mut u128;
@@ -466,10 +498,12 @@ fn strongest_failure_ordering(order: Ordering) -> Ordering {
 mod tests {
     use core::sync::atomic::Ordering;
 
-    use super::{AtomicMarkedPtr128, MarkedPtr128};
+    use super::{get_dwcas_token, AtomicMarkedPtr128, MarkedPtr128};
 
     #[test]
     fn compare_exchange() {
+        let token = get_dwcas_token().expect("CPU model does not support DWCAS instruction");
+
         let ptr = &mut 1 as *mut i32;
 
         let current = MarkedPtr128::compose(ptr, 1);
@@ -477,15 +511,19 @@ mod tests {
 
         let atomic = AtomicMarkedPtr128::new(current);
 
-        let res = atomic.compare_exchange(current, new, Ordering::Relaxed, Ordering::Relaxed);
+        let res =
+            atomic.compare_exchange(current, new, Ordering::Relaxed, Ordering::Relaxed, token);
         assert_eq!(res, Ok(current));
 
-        let res = atomic.compare_exchange(current, new, Ordering::Relaxed, Ordering::Relaxed);
+        let res =
+            atomic.compare_exchange(current, new, Ordering::Relaxed, Ordering::Relaxed, token);
         assert_eq!(res, Err(new));
     }
 
     #[test]
     fn compare_and_swap() {
+        let token = get_dwcas_token().expect("CPU model does not support DWCAS instruction");
+
         let ptr = &mut 1 as *mut i32;
 
         let current = MarkedPtr128::compose(ptr, 1);
@@ -493,20 +531,22 @@ mod tests {
 
         let atomic = AtomicMarkedPtr128::new(current);
 
-        let prev = atomic.compare_and_swap(current, new, Ordering::Relaxed);
+        let prev = atomic.compare_and_swap(current, new, Ordering::Relaxed, token);
         assert_eq!(prev, current);
 
-        let prev = atomic.compare_and_swap(current, new, Ordering::Relaxed);
+        let prev = atomic.compare_and_swap(current, new, Ordering::Relaxed, token);
         assert_eq!(prev, new);
     }
 
     #[test]
     fn load() {
+        let token = get_dwcas_token().expect("CPU model does not support DWCAS instruction");
+
         let ptr = &mut 1 as *mut i32;
 
         let current = MarkedPtr128::new(ptr);
 
         let atomic = AtomicMarkedPtr128::new(current);
-        assert_eq!(atomic.load(Ordering::Relaxed), current);
+        assert_eq!(atomic.load(Ordering::Relaxed, token), current);
     }
 }
