@@ -4,9 +4,7 @@ fn main() {
             println!("building with stdsimd `cmpxchg16b` support (nightly/x86_64)");
         } else {
             println!("building with external C library 'cmpxchg16b' support (stable/x86_64).");
-            // clang issues "atomic_alignment" warning
-            cc::Build::new().file("extern/dwcas.c").warnings(false).compile("dwcas");
-            println!("cargo:rustc-link-lib=atomic");
+            cc::Build::new().file("extern/dwcas.c").compile("dwcas");
         }
     } else {
         println!("building without without 'cmpxchg16' support (no x86_64).");

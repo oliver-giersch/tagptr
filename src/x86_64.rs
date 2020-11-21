@@ -414,7 +414,7 @@ mod ffi {
         success: Ordering,
         failure: Ordering,
     ) -> u128 {
-        let old_ptr = &mut old as *mut u128 as *mut U128;
+        let old_ptr = &mut old as *mut u128 as *mut dwcas_uint128_t;
         let new = new.into();
 
         let _ = dwcas_compare_exchange_128(
@@ -428,10 +428,11 @@ mod ffi {
         old
     }
 
+    #[allow(non_camel_case_types)]
     #[repr(C)]
-    struct U128(u64, u64);
+    struct dwcas_uint128_t(u64, u64);
 
-    impl From<u128> for U128 {
+    impl From<u128> for dwcas_uint128_t {
         #[inline]
         fn from(val: u128) -> Self {
             unsafe { core::mem::transmute(val) }
@@ -440,12 +441,12 @@ mod ffi {
 
     extern "C" {
         fn dwcas_compare_exchange_128(
-            dst: *mut U128,
-            old: *mut U128,
-            new: U128,
+            dst: *mut dwcas_uint128_t,
+            old: *mut dwcas_uint128_t,
+            new: dwcas_uint128_t,
             success: u8,
             failure: u8,
-        ) -> bool;
+        ) -> u8;
     }
 }
 
