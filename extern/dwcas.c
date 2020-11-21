@@ -18,7 +18,7 @@ uint8_t dwcas_compare_exchange_128(
   (void) failure;
 
   __int64* exchange = (__int64*) &new;
-  return (uint8_t) __InterlockedCompareExchange128(
+  return (uint8_t) _InterlockedCompareExchange128(
     (volatile __int64*) dst,
     exchange[0],
     exchange[1],
