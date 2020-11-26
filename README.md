@@ -20,6 +20,11 @@ Add the following to your `Cargo.toml`
 conquer-pointer = "0.1.0"
 ```
 
+Since this crate uses very recent language features (const generics), an
+up-to-date compiler of version `1.50.0` or newer is required.
+Note, that is not guaranteed and future releases will likely require yet more
+recent versions.
+
 ## Motivation
 
 Most atomic processor instructions are restricted to only working with
