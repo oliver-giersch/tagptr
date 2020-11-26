@@ -1,23 +1,27 @@
 #include <stdint.h>
 
-struct dwcas_uint128_t {
-  uint64_t first, second;
-};
+uint8_t dwcas_compare_exchange128(
+  volatile uint64_t dst[2],
+  uint64_t          old[2],
+  const uint64_t    new[2],
+  uint8_t           success,
+  uint8_t           failure
+);
 
 #ifdef _MSC_VER
 #include <intrin.h>
 
-uint8_t dwcas_compare_exchange_128(
-  volatile struct dwcas_uint128_t* dst,
-  struct dwcas_uint128_t*          old,
-  struct dwcas_uint128_t           new,
-  uint8_t                          success,
-  uint8_t                          failure
+uint8_t dwcas_compare_exchange128(
+  volatile uint64_t dst[2],
+  uint64_t          old[2],
+  const uint64_t    new[2],
+  uint8_t           success,
+  uint8_t           failure
 ) {
   (void) success;
   (void) failure;
 
-  __int64* exchange = (__int64*) &new;
+  const __int64* exchange = (const __int64*) new;
   return (uint8_t) _InterlockedCompareExchange128(
     (volatile __int64*) dst,
     exchange[1],
@@ -36,17 +40,17 @@ static inline uint8_t dwcas_transform_memorder(uint8_t order) {
   }
 }
 
-uint8_t dwcas_compare_exchange_128(
-  volatile struct dwcas_uint128_t* dst,
-  struct dwcas_uint128_t*          old,
-  struct dwcas_uint128_t           new,
-  uint8_t                          success,
-  uint8_t                          failure
+uint8_t dwcas_compare_exchange128(
+  volatile uint64_t dst[2],
+  uint64_t          old[2],
+  const uint64_t    new[2],
+  uint8_t           success,
+  uint8_t           failure
 ) {
   return (uint8_t) __atomic_compare_exchange_n(
     (volatile __uint128_t*) dst,
     (__uint128_t*) old,
-    *((__uint128_t*) &new),
+    *((const __uint128_t*) new),
     0,
     dwcas_transform_memorder(success),
     dwcas_transform_memorder(failure)
