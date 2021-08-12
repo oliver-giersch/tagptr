@@ -1,10 +1,12 @@
-use core::cmp;
-use core::convert::TryFrom;
-use core::fmt;
-use core::hash::{Hash, Hasher};
-use core::marker::PhantomData;
-use core::mem;
-use core::ptr::NonNull;
+use core::{
+    cmp,
+    convert::TryFrom,
+    fmt,
+    hash::{Hash, Hasher},
+    marker::PhantomData,
+    mem,
+    ptr::NonNull,
+};
 
 use crate::{MarkedNonNull, MarkedPtr, Null};
 
@@ -102,10 +104,11 @@ impl<T, const N: usize> MarkedNonNull<T, N> {
 
     /// Creates a new pointer that is dangling but well aligned.
     #[inline]
-    pub fn dangling() -> Self {
-        // TODO: could be const fn with const generics
-        // safety: a type's alignment is never zero, so the result of max is always non-zero
-        unsafe { Self::from_usize(cmp::max(mem::align_of::<T>(), Self::TAG_MASK + 1)) }
+    pub const fn dangling() -> Self {
+        let alignment = mem::align_of::<T>();
+        let val = if alignment >= Self::TAG_MASK + 1 { alignment } else { Self::TAG_MASK + 1 };
+        // SAFETY: a type's alignment is never 0, so val is always non-zero
+        unsafe { Self::from_usize(val) }
     }
 
     doc_comment! {
@@ -133,10 +136,7 @@ impl<T, const N: usize> MarkedNonNull<T, N> {
     /// pointer's tag value.
     #[inline]
     pub fn try_compose(ptr: NonNull<T>, tag: usize) -> Result<Self, Null> {
-        match ptr.as_ptr() as usize & Self::POINTER_MASK {
-            0 => Ok(unsafe { Self::compose_unchecked(ptr, tag) }),
-            _ => Err(Null(ptr.as_ptr() as usize)),
-        }
+        Self::try_compose_inner(ptr.as_ptr(), tag)
     }
 
     /// Composes a new marked pointer from a raw (non-null) `ptr` and a `tag`
@@ -172,6 +172,7 @@ impl<T, const N: usize> MarkedNonNull<T, N> {
         #[inline]
         pub fn set_tag(self, tag: usize) -> Self {
             let ptr = self.decompose_non_null();
+            // SAFETY: ptr was decomposed from a valid marked non-nullable pointer
             unsafe { Self::compose_unchecked(ptr, tag) }
         }
     }
@@ -181,6 +182,7 @@ impl<T, const N: usize> MarkedNonNull<T, N> {
         #[inline]
         pub fn update_tag(self, func: impl FnOnce(usize) -> usize) -> Self {
             let (ptr, tag) = self.decompose();
+            // SAFETY: ptr was decomposed from a valid marked non-nullable pointer
             unsafe { Self::compose_unchecked(ptr, func(tag)) }
         }
     }
@@ -229,6 +231,7 @@ impl<T, const N: usize> MarkedNonNull<T, N> {
         doc_decompose_non_null!(),
         #[inline]
         pub fn decompose_non_null(self) -> NonNull<T> {
+            // SAFETY: every valid MarkedNonNull is also a valid NonNull
             unsafe { NonNull::new_unchecked(self.decompose_ptr()) }
         }
     }
@@ -279,6 +282,15 @@ impl<T, const N: usize> MarkedNonNull<T, N> {
     pub unsafe fn decompose_mut(&mut self) -> (&mut T, usize) {
         let (ptr, tag) = self.decompose();
         (&mut *ptr.as_ptr(), tag)
+    }
+
+    #[inline]
+    fn try_compose_inner(ptr: *mut T, tag: usize) -> Result<Self, Null> {
+        match ptr as usize & Self::POINTER_MASK {
+            0 => Err(Null(ptr as usize)),
+            // SAFETY: the pointer's upper bits are non-zero,
+            _ => Ok(unsafe { Self::new_unchecked(MarkedPtr::compose(ptr, tag)) }),
+        }
     }
 }
 
@@ -347,11 +359,7 @@ impl<T, const N: usize> TryFrom<*mut T> for MarkedNonNull<T, N> {
 
     #[inline]
     fn try_from(ptr: *mut T) -> Result<Self, Self::Error> {
-        if ptr as usize & Self::POINTER_MASK == 0 {
-            Err(Null(ptr as usize))
-        } else {
-            Ok(Self { inner: unsafe { NonNull::new_unchecked(ptr) }, _marker: PhantomData })
-        }
+        Self::try_compose_inner(ptr, 0)
     }
 }
 
@@ -385,5 +393,39 @@ impl<T, const N: usize> TryFrom<NonNull<T>> for MarkedNonNull<T, N> {
     #[inline]
     fn try_from(ptr: NonNull<T>) -> Result<Self, Self::Error> {
         Self::try_from(ptr.as_ptr())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use core::ptr::NonNull;
+
+    use crate::Null;
+
+    type MarkedNonNull = crate::MarkedNonNull<i32, 2>;
+
+    #[test]
+    fn test_dangling() {
+        assert_eq!(MarkedNonNull::dangling().into_raw(), NonNull::dangling());
+
+        #[repr(align(64))]
+        struct Alignment64;
+        assert_eq!(crate::MarkedNonNull::<Alignment64, 0>::dangling().into_usize(), 64);
+    }
+
+    #[test]
+    fn test_try_compose() {
+        let reference = &1;
+        let ptr = NonNull::from(reference);
+        let res = MarkedNonNull::try_compose(ptr, 0b11).map(|ptr| ptr.decompose());
+        assert_eq!(res, Ok((ptr, 0b11)));
+
+        let dangling = NonNull::dangling();
+        let res = MarkedNonNull::try_compose(dangling, 0).map(|ptr| ptr.decompose());
+        assert_eq!(res, Ok((dangling, 0)));
+
+        let ptr = NonNull::new(0b11 as *mut i32).unwrap();
+        let res = MarkedNonNull::try_compose(ptr, 0b11);
+        assert_eq!(res, Err(Null(0b11)));
     }
 }

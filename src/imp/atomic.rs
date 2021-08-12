@@ -1,6 +1,8 @@
-use core::fmt;
-use core::marker::PhantomData;
-use core::sync::atomic::{AtomicUsize, Ordering};
+use core::{
+    fmt,
+    marker::PhantomData,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 use crate::{AtomicMarkedPtr, MarkedPtr};
 
@@ -71,6 +73,7 @@ impl<T, const N: usize> AtomicMarkedPtr<T, N> {
     /// threads are concurrently accessing the atomic pointer.
     #[inline]
     pub fn get_mut(&mut self) -> &mut MarkedPtr<T, N> {
+        // SAFETY: the mutable self reference ensures the dereferencing is sound
         unsafe { &mut *(self.inner.get_mut() as *mut usize as *mut _) }
     }
 
@@ -146,55 +149,6 @@ impl<T, const N: usize> AtomicMarkedPtr<T, N> {
     /// ```
     pub fn swap(&self, ptr: MarkedPtr<T, N>, order: Ordering) -> MarkedPtr<T, N> {
         MarkedPtr::from_usize(self.inner.swap(ptr.into_usize(), order))
-    }
-
-    /// Stores a value into the pointer if the current value is the same as
-    /// `current`.
-    ///
-    /// The return value is always the previous value.
-    /// If it is equal to `current`, then the value was updated.
-    /// `compare_and_swap` also takes an [`Ordering`] argument which describes
-    /// the memory ordering of this operation.
-    /// Notice that even when using [`AcqRel`][acq_rel], the operation might
-    /// fail and hence just perform an `Acquire` load, but not have `Release`
-    /// semantics.
-    /// Using [`Acquire`][acq] makes the store part of this operation
-    /// [`Relaxed`][rlx] if it happens, and using [`Release`][rel] makes the
-    /// load part [`Relaxed`][rlx].
-    ///
-    /// [rlx]: Ordering::Relaxed
-    /// [acq]: Ordering::Acquire
-    /// [rel]: Ordering::Release
-    /// [acq_rel]: Ordering::AcqRel
-    /// [seq_cst]: Ordering::SeqCst
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use core::ptr;
-    /// use core::sync::atomic::Ordering;
-    ///
-    /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, 2>;
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
-    ///
-    /// let ptr = AtomicMarkedPtr::null();
-    /// let new = MarkedPtr::new(&mut 1);
-    /// let prev = ptr.compare_and_swap(MarkedPtr::null(), new, Ordering::Relaxed);
-    ///
-    /// assert_eq!(prev, MarkedPtr::null());
-    /// ```
-    #[inline]
-    pub fn compare_and_swap(
-        &self,
-        current: MarkedPtr<T, N>,
-        new: MarkedPtr<T, N>,
-        order: Ordering,
-    ) -> MarkedPtr<T, N> {
-        MarkedPtr::from_usize(self.inner.compare_and_swap(
-            current.into_usize(),
-            new.into_usize(),
-            order,
-        ))
     }
 
     /// Stores a value into the pointer if the current value is the same as

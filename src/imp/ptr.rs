@@ -4,7 +4,7 @@ use core::hash::{Hash, Hasher};
 use core::marker::PhantomData;
 use core::ptr::{self, NonNull};
 
-use crate::{MarkedPtr, MarkedNonNull};
+use crate::{MarkedNonNull, MarkedPtr};
 
 /********** impl Clone ****************************************************************************/
 
@@ -456,12 +456,30 @@ impl<T, const N: usize> From<&T> for MarkedPtr<T, N> {
     }
 }
 
+/********** impl From ((&T, usize)) ***************************************************************/
+
+impl<T, const N: usize> From<(&T, usize)> for MarkedPtr<T, N> {
+    #[inline]
+    fn from((reference, tag): (&T, usize)) -> Self {
+        Self::compose(reference as *const T as *mut T, tag)
+    }
+}
+
 /********** impl From (&mut T) ********************************************************************/
 
 impl<T, const N: usize> From<&mut T> for MarkedPtr<T, N> {
     #[inline]
     fn from(reference: &mut T) -> Self {
         Self::from(reference as *const _)
+    }
+}
+
+/********** impl From ((&mut T, usize)) ***********************************************************/
+
+impl<T, const N: usize> From<(&mut T, usize)> for MarkedPtr<T, N> {
+    #[inline]
+    fn from((reference, tag): (&mut T, usize)) -> Self {
+        Self::compose(reference, tag)
     }
 }
 
@@ -522,7 +540,17 @@ mod tests {
     type MarkedPtr = crate::MarkedPtr<i32, 2>;
 
     #[test]
-    fn cast() {
+    fn test_debug() {
+        let reference = &mut 1;
+        let ptr = MarkedPtr::compose(reference, 0b11);
+        assert_eq!(
+            std::format!("{:?}", ptr),
+            std::format!("MarkedPtr {{ ptr: {:0p}, tag: {} }}", reference as *mut _, 0b11)
+        );
+    }
+
+    #[test]
+    fn test_cast() {
         type ErasedPtr = crate::MarkedPtr<(), 2>;
 
         let reference = &mut 1;
@@ -534,14 +562,14 @@ mod tests {
     }
 
     #[test]
-    fn from_usize() {
+    fn test_from_usize() {
         let reference = &1;
         let ptr = MarkedPtr::from_usize(reference as *const i32 as usize | 0b1);
         assert_eq!(ptr.decompose(), (reference as *const _ as *mut _, 0b1));
     }
 
     #[test]
-    fn compose() {
+    fn test_compose() {
         let reference = &mut 1;
         let ptr1 = MarkedPtr::compose(reference, 0b11);
         let ptr2 = MarkedPtr::compose(reference, 0b111);
@@ -551,7 +579,7 @@ mod tests {
     }
 
     #[test]
-    fn set_tag() {
+    fn test_set_tag() {
         let reference = &mut 1;
         let ptr = MarkedPtr::compose(reference, 0b11);
         // set_tag must silently truncate excess tag bits
@@ -559,7 +587,7 @@ mod tests {
     }
 
     #[test]
-    fn overflow_tag() {
+    fn test_overflow_tag() {
         let reference = &mut 1;
         let ptr = MarkedPtr::compose(reference, 0b11);
 
@@ -570,7 +598,7 @@ mod tests {
     }
 
     #[test]
-    fn underflow_tag() {
+    fn test_underflow_tag() {
         let reference = &mut 1;
         let ptr = MarkedPtr::new(reference);
 
@@ -581,5 +609,19 @@ mod tests {
             ptr.update_tag(|tag| tag.wrapping_sub(1)).decompose(),
             (reference as *mut _, 0b11)
         );
+    }
+
+    #[test]
+    fn test_erase() {
+        #[repr(align(64))]
+        struct Aligned64(i32);
+
+        let reference = &Aligned64(1);
+        let ptr = crate::MarkedPtr::<Aligned64, 6>::from((reference, 55));
+        let mut erased: crate::MarkedPtr<(), 6> = ptr.cast();
+        erased = erased.update_tag(|tag| tag + 3);
+        let ptr: crate::MarkedPtr<Aligned64, 6> = erased.cast();
+
+        assert_eq!(ptr.decompose(), (reference as *const _ as *mut _, 58));
     }
 }

@@ -34,22 +34,17 @@
 //! The type-erased pointer can then safely modify its tag value without
 //! corrupting the original pointer.
 
-#![feature(min_const_generics)]
-#![cfg_attr(feature = "nightly", feature(stdsimd))]
 #![no_std]
+
+#[cfg(test)]
+extern crate std;
 
 #[macro_use]
 mod macros;
 
-#[cfg(target_arch = "x86_64")]
-pub mod x86_64;
-
 mod imp;
 
-use core::marker::PhantomData;
-use core::mem;
-use core::ptr::NonNull;
-use core::sync::atomic::AtomicUsize;
+use core::{marker::PhantomData, mem, ptr::NonNull, sync::atomic::AtomicUsize};
 
 // *************************************************************************************************
 // AtomicMarkedPtr (impl in "imp/atomic.rs")
@@ -84,7 +79,7 @@ pub struct AtomicMarkedPtr<T, const N: usize> {
 #[repr(transparent)]
 pub struct MarkedPtr<T, const N: usize> {
     inner: *mut T,
-    _marker: PhantomData<()>,
+    _marker: PhantomData<()>, // the "fake" marker allows to use the same macro for all pointers
 }
 
 // *************************************************************************************************
@@ -161,33 +156,6 @@ pub fn assert_alignment<T, const N: usize>() {
 
 /********** helper functions **********************************************************************/
 
-/// Decomposes the integer representation of a `marked_ptr` for a given number
-/// of `tag_bits` into only a raw pointer.
-#[inline]
-const fn decompose_ptr<T>(ptr: usize, tag_bits: usize) -> *mut T {
-    (ptr & !mark_mask::<T>(tag_bits)) as *mut _
-}
-
-/// Decomposes the integer representation of a `marked_ptr` for a given number
-/// of `tag_bits` into only a separated tag value.
-#[inline]
-const fn decompose_tag<T>(ptr: usize, tag_bits: usize) -> usize {
-    ptr & mark_mask::<T>(tag_bits)
-}
-
-/// Returns the (alignment-dependent) number of unused lower bits in a pointer
-/// to type `T`.
-#[inline]
-const fn lower_bits<T>() -> usize {
-    mem::align_of::<T>().trailing_zeros() as usize
-}
-
-/// Returns the bit-mask for the lower bits containing the tag value.
-#[inline]
-const fn mark_mask<T>(tag_bits: usize) -> usize {
-    (1 << tag_bits) - 1
-}
-
 /// Composes the given `ptr` with `tag` and returns the composed marked pointer
 /// as a raw `*mut T`.
 ///
@@ -195,8 +163,35 @@ const fn mark_mask<T>(tag_bits: usize) -> usize {
 ///
 /// Panics in *debug builds only* if `ptr` is not well aligned, i.e., if it
 /// contains any bits in its lower bits reserved for the tag value.
-#[inline]
+#[inline(always)]
 fn compose<T, const N: usize>(ptr: *mut T, tag: usize) -> *mut T {
-    debug_assert_eq!(ptr as usize & mark_mask::<T>(N), 0);
+    debug_assert_eq!(ptr as usize & mark_mask::<T>(N), 0, "tag bits in raw pointer must be zeroed");
     ((ptr as usize) | (mark_mask::<T>(N) & tag)) as *mut _
+}
+
+/// Decomposes the integer representation of a `marked_ptr` for a given number
+/// of `tag_bits` into only a raw pointer.
+#[inline(always)]
+const fn decompose_ptr<T>(ptr: usize, tag_bits: usize) -> *mut T {
+    (ptr & !mark_mask::<T>(tag_bits)) as *mut _
+}
+
+/// Decomposes the integer representation of a `marked_ptr` for a given number
+/// of `tag_bits` into only a separated tag value.
+#[inline(always)]
+const fn decompose_tag<T>(ptr: usize, tag_bits: usize) -> usize {
+    ptr & mark_mask::<T>(tag_bits)
+}
+
+/// Returns the (alignment-dependent) number of unused lower bits in a pointer
+/// to type `T`.
+#[inline(always)]
+const fn lower_bits<T>() -> usize {
+    mem::align_of::<T>().trailing_zeros() as usize
+}
+
+/// Returns the bit-mask for the lower bits containing the tag value.
+#[inline(always)]
+const fn mark_mask<T>(tag_bits: usize) -> usize {
+    (1 << tag_bits) - 1
 }
