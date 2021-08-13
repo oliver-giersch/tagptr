@@ -60,8 +60,6 @@ impl<T, const N: usize> TagPtr<T, N> {
         /// # Examples
         ///
         /// ```
-        /// use core::ptr;
-        ///
         /// type TagPtr = tagptr::TagPtr<i32, 2>;
         ///
         /// let reference = &mut 1;
@@ -99,8 +97,6 @@ impl<T, const N: usize> TagPtr<T, N> {
         /// # Examples
         ///
         /// ```
-        /// use core::ptr;
-        ///
         /// type TagPtr = tagptr::TagPtr<i32, 2>;
         ///
         /// let ptr = TagPtr::from_usize(0b11);
@@ -125,8 +121,6 @@ impl<T, const N: usize> TagPtr<T, N> {
         /// # Examples
         ///
         /// ```
-        /// use core::ptr;
-        ///
         /// type TagPtr = tagptr::TagPtr<i32, 2>;
         ///
         /// let ptr = TagPtr::from_usize(0b11);
@@ -144,8 +138,6 @@ impl<T, const N: usize> TagPtr<T, N> {
         /// # Examples
         ///
         /// ```
-        /// use core::ptr;
-        ///
         /// type TagPtr = tagptr::TagPtr<i32, 2>;
         ///
         /// let raw = &1 as *const i32 as *mut i32;
@@ -325,8 +317,6 @@ impl<T, const N: usize> TagPtr<T, N> {
         /// # Examples
         ///
         /// ```
-        /// use core::ptr;
-        ///
         /// type TagPtr = tagptr::TagPtr<i32, 2>;
         ///
         /// let reference = &1;
@@ -348,8 +338,6 @@ impl<T, const N: usize> TagPtr<T, N> {
         /// # Examples
         ///
         /// ```
-        /// use core::ptr;
-        ///
         /// type TagPtr = tagptr::TagPtr<i32, 2>;
         ///
         /// let mut val = 1;
@@ -375,8 +363,6 @@ impl<T, const N: usize> TagPtr<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use core::ptr;
-    ///
     /// type TagPtr = tagptr::TagPtr<i32, 2>;
     ///
     /// let reference = &1;
@@ -401,8 +387,6 @@ impl<T, const N: usize> TagPtr<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use core::ptr;
-    ///
     /// type TagPtr = tagptr::TagPtr<i32, 2>;
     ///
     /// let mut val = 1;

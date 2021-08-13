@@ -35,8 +35,7 @@ impl<T, const N: usize> AtomicTagPtr<T, N> {
         /// # Examples
         ///
         /// ```
-        /// use core::ptr;
-        /// use core::sync::atomic::Ordering;
+        /// use core::{ptr, sync::atomic::Ordering};
         ///
         /// type AtomicTagPtr = tagptr::AtomicTagPtr<i32, 2>;
         ///
@@ -136,7 +135,6 @@ impl<T, const N: usize> AtomicTagPtr<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use core::ptr;
     /// use core::sync::atomic::Ordering;
     ///
     /// type AtomicTagPtr = tagptr::AtomicTagPtr<i32, 2>;
@@ -251,7 +249,6 @@ impl<T, const N: usize> AtomicTagPtr<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use core::ptr;
     /// use core::sync::atomic::Ordering;
     ///
     /// type AtomicTagPtr = tagptr::AtomicTagPtr<i32, 2>;
@@ -298,7 +295,6 @@ impl<T, const N: usize> AtomicTagPtr<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use core::ptr;
     /// use core::sync::atomic::Ordering;
     ///
     /// type AtomicTagPtr = tagptr::AtomicTagPtr<i32, 2>;
@@ -345,7 +341,6 @@ impl<T, const N: usize> AtomicTagPtr<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use core::ptr;
     /// use core::sync::atomic::Ordering;
     ///
     /// type AtomicTagPtr = tagptr::AtomicTagPtr<i32, 2>;
@@ -366,6 +361,7 @@ impl<T, const N: usize> AtomicTagPtr<T, N> {
     /// ```
     #[inline]
     pub fn fetch_or(&self, value: usize, order: Ordering) -> TagPtr<T, N> {
+        debug_assert!(value <= Self::TAG_MASK, "`value` exceeds tag bits (would corrupt pointer)");
         TagPtr::from_usize(self.inner.fetch_or(Self::TAG_MASK & value, order))
     }
 
@@ -391,7 +387,6 @@ impl<T, const N: usize> AtomicTagPtr<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use core::ptr;
     /// use core::sync::atomic::Ordering;
     ///
     /// type AtomicTagPtr = tagptr::AtomicTagPtr<i32, 2>;
@@ -413,6 +408,7 @@ impl<T, const N: usize> AtomicTagPtr<T, N> {
     /// ```
     #[inline]
     pub fn fetch_and(&self, value: usize, order: Ordering) -> TagPtr<T, N> {
+        debug_assert!(value <= Self::TAG_MASK, "`value` exceeds tag bits (would corrupt pointer)");
         TagPtr::from_usize(self.inner.fetch_and(Self::POINTER_MASK | value, order))
     }
 }

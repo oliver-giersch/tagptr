@@ -1,6 +1,6 @@
 # tagptr
 
-Strongly typed marked pointers for storing bit patterns alongside raw pointers
+Strongly typed marked pointers for storing bit patterns (_tags_) alongside raw pointers
 for concurrent programming with atomic operations.
 
 [![Build Status](https://github.com/oliver-giersch/tagptr/actions/workflows/rust.yml/badge.svg?branch=master)](https://github.com/oliver-giersch/tagptr/actions/workflows/rust.yml)

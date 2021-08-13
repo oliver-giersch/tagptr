@@ -20,6 +20,12 @@
 //! `u16`) never use the first of their lower bits (i.e., it is always zero),
 //! pointers to types with an alignment of 8 (2^3) bytes such as `u64` never
 //! use their 3 lowest bits and so on.
+//! Great care must be taken at all times to avoid over- or underflows in the
+//! usually highly restricted range of valid tags for common tag sizes when
+//! doing arithmetic operations.
+//! Any operations resulting in tag values outside of their valid range will
+//! invariably corrupt the bits representing the pointer and hence invoke
+//! undefined behavior when dereferencing these pointers.
 //!
 //! Constructing a type such as `TagPtr<u64, 4>` is hence usually a user error,
 //! since a pointer to a `u64` has only 3 unused bits.
@@ -34,6 +40,22 @@
 //! it is valid to [`cast`][TagPtr::cast] it to a type with a smaller alignment
 //! and the same number of tag bits such as `TagPtr<(), 3>` for the purpose of
 //! type-erasure.
+//!
+//! # Example
+//!
+//! Storing a boolean status flag alongside the pointer to a mutable `u64`:
+//!
+//! ```
+//! type TagPtr = tagptr::TagPtr<u64, 3>;
+//!
+//! let mut val = 0xCAFE;
+//! let is_ok = true;
+//!
+//! let ptr = TagPtr::compose(&mut val, is_ok as usize);
+//! let (reference, tag) = unsafe { ptr.decompose_mut() };
+//! assert_eq!(reference, Some(&mut 0xCAFE));
+//! assert_eq!(tag == 1, true);
+//! ```
 
 #![no_std]
 
