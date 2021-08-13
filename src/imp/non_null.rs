@@ -30,7 +30,7 @@ impl<T, const N: usize> MarkedNonNull<T, N> {
 
     doc_comment! {
         doc_tag_mask!(),
-        pub const TAG_MASK: usize = crate::mark_mask::<T>(Self::TAG_BITS);
+        pub const TAG_MASK: usize = crate::mark_mask(Self::TAG_BITS);
     }
 
     doc_comment! {
@@ -144,7 +144,8 @@ impl<T, const N: usize> MarkedNonNull<T, N> {
     ///
     /// # Safety
     ///
-    /// The caller has to ensure that `ptr` ...
+    /// The caller has to ensure that `ptr` is non-null even after considering
+    /// its `N` lower bits as tag bits.
     #[inline]
     pub unsafe fn compose_unchecked(ptr: NonNull<T>, tag: usize) -> Self {
         Self::new_unchecked(MarkedPtr::compose(ptr.as_ptr(), tag))

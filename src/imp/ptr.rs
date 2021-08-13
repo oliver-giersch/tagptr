@@ -1,8 +1,9 @@
-use core::cmp;
-use core::fmt;
-use core::hash::{Hash, Hasher};
-use core::marker::PhantomData;
-use core::ptr::{self, NonNull};
+use core::{
+    cmp, fmt,
+    hash::{Hash, Hasher},
+    marker::PhantomData,
+    ptr::{self, NonNull},
+};
 
 use crate::{MarkedNonNull, MarkedPtr};
 
@@ -26,7 +27,7 @@ impl<T, const N: usize> MarkedPtr<T, N> {
 
     doc_comment! {
         doc_tag_mask!(),
-        pub const TAG_MASK: usize = crate::mark_mask::<T>(Self::TAG_BITS);
+        pub const TAG_MASK: usize = crate::mark_mask(Self::TAG_BITS);
     }
 
     doc_comment! {
@@ -332,7 +333,7 @@ impl<T, const N: usize> MarkedPtr<T, N> {
         /// let ptr = MarkedPtr::compose(reference as *const _ as *mut _, 0b11);
         ///
         /// unsafe {
-        ///     assert_eq!(ptr.as_ref(), Some(reference));
+        ///     assert_eq!(ptr.as_ref(), Some(&1));
         /// }
         /// ```
         #[inline]
@@ -351,11 +352,11 @@ impl<T, const N: usize> MarkedPtr<T, N> {
         ///
         /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
         ///
-        /// let reference = &mut 1;
-        /// let ptr = MarkedPtr::compose(reference, 0b11);
+        /// let mut val = 1;
+        /// let ptr = MarkedPtr::compose(&mut val, 0b11);
         ///
         /// unsafe {
-        ///     assert_eq!(ptr.as_mut(), Some(reference));
+        ///     assert_eq!(ptr.as_mut(), Some(&mut 1));
         /// }
         /// ```
         #[inline]
@@ -382,7 +383,7 @@ impl<T, const N: usize> MarkedPtr<T, N> {
     /// let ptr = MarkedPtr::compose(reference as *const _ as *mut _, 0b11);
     ///
     /// unsafe {
-    ///     assert_eq!(ptr.decompose_ref(), (Some(reference), 0b11));
+    ///     assert_eq!(ptr.decompose_ref(), (Some(&1), 0b11));
     /// }
     /// ```
     #[inline]
@@ -404,11 +405,11 @@ impl<T, const N: usize> MarkedPtr<T, N> {
     ///
     /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
     ///
-    /// let reference = &mut 1;
-    /// let ptr = MarkedPtr::compose(reference, 0b11);
+    /// let mut val = 1;
+    /// let ptr = MarkedPtr::compose(&mut val, 0b11);
     ///
     /// unsafe {
-    ///     assert_eq!(ptr.decompose_mut(), (Some(reference), 0b11));
+    ///     assert_eq!(ptr.decompose_mut(), (Some(&mut 1), 0b11));
     /// }
     /// ```
     #[inline]

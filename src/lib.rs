@@ -1,21 +1,26 @@
-//! Strongly typed pointers with reserved bits for storing additional bit
-//! patterns within pointer-width memory words.
+//! Strongly typed pointers with reserved space for storing additional bit
+//! patterns within the same memory word.
 //!
 //! # Motivation
 //!
-//! Many lock-free algorithms require storing additional state information
-//! together with pointers (i.e., within the same 32-bit or 64-bit memory word)
-//! in order to be able to exchange both the pointer and the state with a single
-//! atomic instruction.
-//! The marked pointer types provided by this crate encapsulate and abstract the
-//! required functionality and logic for composing, decomposing and mutating
-//! such pointers with tag values.
+//! In low-level concurrent programming (synchronization primitives,
+//! lock-free data structures, etc) it is often required to store additional
+//! state information (tags) alongside pointers to objects in memory, since
+//! most atomic CPU instructions operate on pointer-wide memory words.
+//! The marked pointer types provided by this crate encapsulate the logic and
+//! pointer arithmetic for composing (creating), decomposing and mutating
+//! such pointers and tag values.
 //!
 //! # Tag Bits and Type Alignment
 //!
-//! The number of unused lower bits in a pointer is directly determined by the
-//! alignment of the pointed-to type, as long as the pointer itself is
-//! well-aligned (e.g., not packed).
+//! The possible space for storing tag bits in a pointer is determined by the
+//! alignment of the pointed-to type, as long as the pointer is well-aligned
+//! (e.g., not packed).
+//! For instance, pointers to types with an alignment of 2 (2^1) bytes (e.g.,
+//! `u16`) never use the first of their lower bits (i.e., it is always zero),
+//! pointers to types with an alignment of 8 (2^3) bytes such as `u64` never
+//! use their 3 lowest bits and so on.
+
 //! For example, the `u64` type has an alignment of 8 (or 2^3) and, therefore,
 //! no well-aligned pointer to an `u64` uses its lower 3 bits.
 //! Consequently, constructing, e.g., a `MarkedPtr<u64, 4>` is most likely an
@@ -165,22 +170,22 @@ pub fn assert_alignment<T, const N: usize>() {
 /// contains any bits in its lower bits reserved for the tag value.
 #[inline(always)]
 fn compose<T, const N: usize>(ptr: *mut T, tag: usize) -> *mut T {
-    debug_assert_eq!(ptr as usize & mark_mask::<T>(N), 0, "tag bits in raw pointer must be zeroed");
-    ((ptr as usize) | (mark_mask::<T>(N) & tag)) as *mut _
+    debug_assert_eq!(ptr as usize & mark_mask(N), 0, "tag bits in raw pointer must be zeroed");
+    ((ptr as usize) | (mark_mask(N) & tag)) as *mut _
 }
 
 /// Decomposes the integer representation of a `marked_ptr` for a given number
 /// of `tag_bits` into only a raw pointer.
 #[inline(always)]
 const fn decompose_ptr<T>(ptr: usize, tag_bits: usize) -> *mut T {
-    (ptr & !mark_mask::<T>(tag_bits)) as *mut _
+    (ptr & !mark_mask(tag_bits)) as *mut _
 }
 
 /// Decomposes the integer representation of a `marked_ptr` for a given number
 /// of `tag_bits` into only a separated tag value.
 #[inline(always)]
 const fn decompose_tag<T>(ptr: usize, tag_bits: usize) -> usize {
-    ptr & mark_mask::<T>(tag_bits)
+    ptr & mark_mask(tag_bits)
 }
 
 /// Returns the (alignment-dependent) number of unused lower bits in a pointer
@@ -192,6 +197,6 @@ const fn lower_bits<T>() -> usize {
 
 /// Returns the bit-mask for the lower bits containing the tag value.
 #[inline(always)]
-const fn mark_mask<T>(tag_bits: usize) -> usize {
+const fn mark_mask(tag_bits: usize) -> usize {
     (1 << tag_bits) - 1
 }

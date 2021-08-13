@@ -21,7 +21,7 @@ impl<T, const N: usize> AtomicMarkedPtr<T, N> {
 
     doc_comment! {
         doc_tag_mask!(),
-        pub const TAG_MASK: usize = crate::mark_mask::<T>(Self::TAG_BITS);
+        pub const TAG_MASK: usize = crate::mark_mask(Self::TAG_BITS);
     }
 
     doc_comment! {
