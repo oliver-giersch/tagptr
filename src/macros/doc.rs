@@ -87,12 +87,12 @@ macro_rules! doc_clear_tag {
             doc_clear_tag!(),
             "# Examples\n\n\
             ```\nuse core::ptr::NonNull;\n\n\
-            type MarkedNonNull = ",
+            type TagNonNull = ",
             stringify!($example_type_path),
             ";\n\n\
             let reference = &mut 1;\n\
-            let ptr = MarkedNonNull::compose(NonNull::from(reference), 0b11);\n\
-            assert_eq!(ptr.clear_tag(), MarkedNonNull::from(reference));\n```"
+            let ptr = TagNonNull::compose(NonNull::from(reference), 0b11);\n\
+            assert_eq!(ptr.clear_tag(), TagNonNull::from(reference));\n```"
         )
     };
     ($example_type_path:path) => {
@@ -100,12 +100,12 @@ macro_rules! doc_clear_tag {
             doc_clear_tag!(),
             "# Examples\n\n\
             ```\nuse core::ptr;\n\n\
-            type MarkedPtr = ",
+            type TagPtr = ",
             stringify!($example_type_path),
             ";\n\n\
             let reference = &mut 1;\n\
-            let ptr = MarkedPtr::compose(reference, 0b11);\n\
-            assert_eq!(ptr.clear_tag(), MarkedPtr::new(reference));\n```"
+            let ptr = TagPtr::compose(reference, 0b11);\n\
+            assert_eq!(ptr.clear_tag(), TagPtr::new(reference));\n```"
         )
     };
     () => {
@@ -119,12 +119,12 @@ macro_rules! doc_split_tag {
             doc_split_tag!(),
             "# Examples\n\n\
             ```\nuse core::ptr;\n\n\
-            type MarkedNonNull = ",
+            type TagNonNull = ",
             stringify!($example_type_path),
             ";\n\n\
             let reference = &mut 1;\n\
-            let ptr = MarkedNonNull::compose(NonNull::from(reference), 0b11);\n\
-            assert_eq!(ptr.split_tag(), (MarkedNonNull::from(reference), 0b11));\n```"
+            let ptr = TagNonNull::compose(NonNull::from(reference), 0b11);\n\
+            assert_eq!(ptr.split_tag(), (TagNonNull::from(reference), 0b11));\n```"
         )
     };
     ($example_type_path:path) => {
@@ -132,12 +132,12 @@ macro_rules! doc_split_tag {
             doc_split_tag!(),
             "# Examples\n\n\
             ```\nuse core::ptr;\n\n\
-            type MarkedPtr = ",
+            type TagPtr = ",
             stringify!($example_type_path),
             ";\n\n\
             let reference = &mut 1;\n\
-            let ptr = MarkedPtr::compose(reference, 0b11);\n\
-            assert_eq!(ptr.split_tag(), (MarkedPtr::new(reference), 0b11));\n```"
+            let ptr = TagPtr::compose(reference, 0b11);\n\
+            assert_eq!(ptr.split_tag(), (TagPtr::new(reference), 0b11));\n```"
         )
     };
     () => {
@@ -152,11 +152,11 @@ macro_rules! doc_set_tag {
             doc_set_tag!(),
             "\n\n# Examples\n\n\
             ```\nuse core::ptr;\n\n\
-            type MarkedNonNull = ",
+            type TagNonNull = ",
             stringify!($example_type_path),
             ";\n\n\
             let reference = &mut 1;\n\
-            let ptr = MarkedNonNull::compose(NonNull::from(reference), 0b11);\n\
+            let ptr = TagNonNull::compose(NonNull::from(reference), 0b11);\n\
             assert_eq!(ptr.set_tag(0b10).decompose(), (NonNull::from(reference), 0b10));\n```"
         )
     };
@@ -165,11 +165,11 @@ macro_rules! doc_set_tag {
             doc_set_tag!(),
             "\n\n# Examples\n\n\
             ```\nuse core::ptr;\n\n\
-            type MarkedPtr = ",
+            type TagPtr = ",
             stringify!($example_type_path),
             ";\n\n\
             let reference = &mut 1;\n\
-            let ptr = MarkedPtr::compose(reference, 0b11);\n\
+            let ptr = TagPtr::compose(reference, 0b11);\n\
             assert_eq!(ptr.set_tag(0b10).decompose(), (reference as *mut _, 0b10));\n```"
         )
     };
@@ -184,11 +184,11 @@ macro_rules! doc_update_tag {
             doc_update_tag!(),
             "\n\n# Examples\n\n\
             ```\nuse core::ptr;\n\n\
-            type MarkedNonNull = ",
+            type TagNonNull = ",
             stringify!($example_type_path),
             ";\n\n\
             let reference = &mut 1;\n\
-            let ptr = MarkedNonNull::compose(reference, 0b11);\n\
+            let ptr = TagNonNull::compose(reference, 0b11);\n\
             assert_eq!(ptr.update_tag(|tag| tag - 2).decompose(), (NonNull::from(reference), 0b01));\n```"
         )
     };
@@ -197,11 +197,11 @@ macro_rules! doc_update_tag {
             doc_update_tag!(),
             "\n\n# Examples\n\n\
             ```\nuse core::ptr;\n\n\
-            type MarkedPtr = ",
+            type TagPtr = ",
             stringify!($example_type_path),
             ";\n\n\
             let reference = &mut 1;
-            let ptr = MarkedPtr::compose(reference, 0b11);\n\
+            let ptr = TagPtr::compose(reference, 0b11);\n\
             let ptr = ptr.update_tag(|tag| tag - 1);\n\
             assert_eq!(ptr.decompose(), (reference as *mut _, 0b10));\n```"
         )

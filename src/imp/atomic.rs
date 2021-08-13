@@ -4,16 +4,16 @@ use core::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
-use crate::{AtomicMarkedPtr, MarkedPtr};
+use crate::{AtomicTagPtr, TagPtr};
 
 /********** impl Send + Sync **********************************************************************/
 
-unsafe impl<T, const N: usize> Send for AtomicMarkedPtr<T, N> {}
-unsafe impl<T, const N: usize> Sync for AtomicMarkedPtr<T, N> {}
+unsafe impl<T, const N: usize> Send for AtomicTagPtr<T, N> {}
+unsafe impl<T, const N: usize> Sync for AtomicTagPtr<T, N> {}
 
 /********** impl inherent *************************************************************************/
 
-impl<T, const N: usize> AtomicMarkedPtr<T, N> {
+impl<T, const N: usize> AtomicTagPtr<T, N> {
     doc_comment! {
         doc_tag_bits!(),
         pub const TAG_BITS: usize = N;
@@ -38,9 +38,9 @@ impl<T, const N: usize> AtomicMarkedPtr<T, N> {
         /// use core::ptr;
         /// use core::sync::atomic::Ordering;
         ///
-        /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, 2>;
+        /// type AtomicTagPtr = tagptr::AtomicTagPtr<i32, 2>;
         ///
-        /// let ptr = AtomicMarkedPtr::null();
+        /// let ptr = AtomicTagPtr::null();
         /// assert_eq!(
         ///     ptr.load(Ordering::Relaxed).decompose(),
         ///     (ptr::null_mut(), 0)
@@ -54,7 +54,7 @@ impl<T, const N: usize> AtomicMarkedPtr<T, N> {
     doc_comment! {
         doc_atomic_new!(),
         #[inline]
-        pub fn new(marked_ptr: MarkedPtr<T, N>) -> Self {
+        pub fn new(marked_ptr: TagPtr<T, N>) -> Self {
             Self { inner: AtomicUsize::new(marked_ptr.into_usize()), _marker: PhantomData }
         }
     }
@@ -62,8 +62,8 @@ impl<T, const N: usize> AtomicMarkedPtr<T, N> {
     doc_comment! {
         doc_atomic_into_inner!(),
         #[inline]
-        pub fn into_inner(self) -> MarkedPtr<T, N> {
-            MarkedPtr::from_usize(self.inner.into_inner())
+        pub fn into_inner(self) -> TagPtr<T, N> {
+            TagPtr::from_usize(self.inner.into_inner())
         }
     }
 
@@ -72,7 +72,7 @@ impl<T, const N: usize> AtomicMarkedPtr<T, N> {
     /// This is safe because the mutable reference guarantees no other
     /// threads are concurrently accessing the atomic pointer.
     #[inline]
-    pub fn get_mut(&mut self) -> &mut MarkedPtr<T, N> {
+    pub fn get_mut(&mut self) -> &mut TagPtr<T, N> {
         // SAFETY: the mutable self reference ensures the dereferencing is sound
         unsafe { &mut *(self.inner.get_mut() as *mut usize as *mut _) }
     }
@@ -94,8 +94,8 @@ impl<T, const N: usize> AtomicMarkedPtr<T, N> {
     /// [acq_rel]: Ordering::AcqRel
     /// [seq_cst]: Ordering::SeqCst
     #[inline]
-    pub fn load(&self, order: Ordering) -> MarkedPtr<T, N> {
-        MarkedPtr::from_usize(self.inner.load(order))
+    pub fn load(&self, order: Ordering) -> TagPtr<T, N> {
+        TagPtr::from_usize(self.inner.load(order))
     }
 
     /// Stores a value into the atomic marked pointer.
@@ -115,7 +115,7 @@ impl<T, const N: usize> AtomicMarkedPtr<T, N> {
     /// [acq_rel]: Ordering::AcqRel
     /// [seq_cst]: Ordering::SeqCst
     #[inline]
-    pub fn store(&self, ptr: MarkedPtr<T, N>, order: Ordering) {
+    pub fn store(&self, ptr: TagPtr<T, N>, order: Ordering) {
         self.inner.store(ptr.into_usize(), order)
     }
 
@@ -139,16 +139,16 @@ impl<T, const N: usize> AtomicMarkedPtr<T, N> {
     /// use core::ptr;
     /// use core::sync::atomic::Ordering;
     ///
-    /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, 2>;
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+    /// type AtomicTagPtr = tagptr::AtomicTagPtr<i32, 2>;
+    /// type TagPtr = tagptr::TagPtr<i32, 2>;
     ///
-    /// let ptr = AtomicMarkedPtr::null();
-    /// let prev = ptr.swap(MarkedPtr::new(&mut 1), Ordering::Relaxed);
+    /// let ptr = AtomicTagPtr::null();
+    /// let prev = ptr.swap(TagPtr::new(&mut 1), Ordering::Relaxed);
     ///
     /// assert!(prev.is_null());
     /// ```
-    pub fn swap(&self, ptr: MarkedPtr<T, N>, order: Ordering) -> MarkedPtr<T, N> {
-        MarkedPtr::from_usize(self.inner.swap(ptr.into_usize(), order))
+    pub fn swap(&self, ptr: TagPtr<T, N>, order: Ordering) -> TagPtr<T, N> {
+        TagPtr::from_usize(self.inner.swap(ptr.into_usize(), order))
     }
 
     /// Stores a value into the pointer if the current value is the same as
@@ -177,14 +177,14 @@ impl<T, const N: usize> AtomicMarkedPtr<T, N> {
     #[inline]
     pub fn compare_exchange(
         &self,
-        current: MarkedPtr<T, N>,
-        new: MarkedPtr<T, N>,
+        current: TagPtr<T, N>,
+        new: TagPtr<T, N>,
         (success, failure): (Ordering, Ordering),
-    ) -> Result<MarkedPtr<T, N>, MarkedPtr<T, N>> {
+    ) -> Result<TagPtr<T, N>, TagPtr<T, N>> {
         self.inner
             .compare_exchange(current.into_usize(), new.into_usize(), success, failure)
             .map(|_| current)
-            .map_err(MarkedPtr::from_usize)
+            .map_err(TagPtr::from_usize)
     }
 
     /// Stores a value into the pointer if the current value is the same as
@@ -219,14 +219,14 @@ impl<T, const N: usize> AtomicMarkedPtr<T, N> {
     #[inline]
     pub fn compare_exchange_weak(
         &self,
-        current: MarkedPtr<T, N>,
-        new: MarkedPtr<T, N>,
+        current: TagPtr<T, N>,
+        new: TagPtr<T, N>,
         (success, failure): (Ordering, Ordering),
-    ) -> Result<MarkedPtr<T, N>, MarkedPtr<T, N>> {
+    ) -> Result<TagPtr<T, N>, TagPtr<T, N>> {
         self.inner
             .compare_exchange_weak(current.into_usize(), new.into_usize(), success, failure)
             .map(|_| current)
-            .map_err(MarkedPtr::from_usize)
+            .map_err(TagPtr::from_usize)
     }
 
     /// Adds `value` to the current tag value, returning the previous marked
@@ -254,11 +254,11 @@ impl<T, const N: usize> AtomicMarkedPtr<T, N> {
     /// use core::ptr;
     /// use core::sync::atomic::Ordering;
     ///
-    /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, 2>;
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+    /// type AtomicTagPtr = tagptr::AtomicTagPtr<i32, 2>;
+    /// type TagPtr = tagptr::TagPtr<i32, 2>;
     ///
     /// let reference = &mut 1;
-    /// let ptr = AtomicMarkedPtr::new(MarkedPtr::new(reference));
+    /// let ptr = AtomicTagPtr::new(TagPtr::new(reference));
     ///
     /// assert_eq!(
     ///     ptr.fetch_add(1, Ordering::Relaxed).decompose(),
@@ -271,9 +271,9 @@ impl<T, const N: usize> AtomicMarkedPtr<T, N> {
     /// );
     /// ```
     #[inline]
-    pub fn fetch_add(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
+    pub fn fetch_add(&self, value: usize, order: Ordering) -> TagPtr<T, N> {
         debug_assert!(value < Self::TAG_MASK, "`value` exceeds tag bits (would overflow)");
-        MarkedPtr::from_usize(self.inner.fetch_add(value, order))
+        TagPtr::from_usize(self.inner.fetch_add(value, order))
     }
 
     /// Subtracts `value` from the current tag value, returning the previous
@@ -301,11 +301,11 @@ impl<T, const N: usize> AtomicMarkedPtr<T, N> {
     /// use core::ptr;
     /// use core::sync::atomic::Ordering;
     ///
-    /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, 2>;
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+    /// type AtomicTagPtr = tagptr::AtomicTagPtr<i32, 2>;
+    /// type TagPtr = tagptr::TagPtr<i32, 2>;
     ///
     /// let reference = &mut 1;
-    /// let ptr = AtomicMarkedPtr::new(MarkedPtr::compose(reference, 0b10));
+    /// let ptr = AtomicTagPtr::new(TagPtr::compose(reference, 0b10));
     ///
     /// assert_eq!(
     ///     ptr.fetch_sub(1, Ordering::Relaxed).decompose(),
@@ -318,9 +318,9 @@ impl<T, const N: usize> AtomicMarkedPtr<T, N> {
     /// );
     /// ```
     #[inline]
-    pub fn fetch_sub(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
+    pub fn fetch_sub(&self, value: usize, order: Ordering) -> TagPtr<T, N> {
         debug_assert!(value < Self::TAG_MASK, "`value` exceeds tag bits (would underflow)");
-        MarkedPtr::from_usize(self.inner.fetch_sub(value, order))
+        TagPtr::from_usize(self.inner.fetch_sub(value, order))
     }
 
     /// Performs a bitwise "or" of `value` with the current tag value, returning
@@ -348,11 +348,11 @@ impl<T, const N: usize> AtomicMarkedPtr<T, N> {
     /// use core::ptr;
     /// use core::sync::atomic::Ordering;
     ///
-    /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, 2>;
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+    /// type AtomicTagPtr = tagptr::AtomicTagPtr<i32, 2>;
+    /// type TagPtr = tagptr::TagPtr<i32, 2>;
     ///
     /// let reference = &mut 1;
-    /// let ptr = AtomicMarkedPtr::new(MarkedPtr::compose(reference, 0b10));
+    /// let ptr = AtomicTagPtr::new(TagPtr::compose(reference, 0b10));
     ///
     /// assert_eq!(
     ///     ptr.fetch_or(0b11, Ordering::Relaxed).decompose(),
@@ -365,8 +365,8 @@ impl<T, const N: usize> AtomicMarkedPtr<T, N> {
     /// );
     /// ```
     #[inline]
-    pub fn fetch_or(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
-        MarkedPtr::from_usize(self.inner.fetch_or(Self::TAG_MASK & value, order))
+    pub fn fetch_or(&self, value: usize, order: Ordering) -> TagPtr<T, N> {
+        TagPtr::from_usize(self.inner.fetch_or(Self::TAG_MASK & value, order))
     }
 
     /// Performs a bitwise "and" of `value` with the current tag value,
@@ -394,11 +394,11 @@ impl<T, const N: usize> AtomicMarkedPtr<T, N> {
     /// use core::ptr;
     /// use core::sync::atomic::Ordering;
     ///
-    /// type AtomicMarkedPtr = conquer_pointer::AtomicMarkedPtr<i32, 2>;
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+    /// type AtomicTagPtr = tagptr::AtomicTagPtr<i32, 2>;
+    /// type TagPtr = tagptr::TagPtr<i32, 2>;
     ///
     /// let reference = &mut 1;
-    /// let ptr = AtomicMarkedPtr::new(MarkedPtr::compose(reference, 0b10));
+    /// let ptr = AtomicTagPtr::new(TagPtr::compose(reference, 0b10));
     ///
     /// // fetch_x returns previous value
     /// assert_eq!(
@@ -412,48 +412,48 @@ impl<T, const N: usize> AtomicMarkedPtr<T, N> {
     /// );
     /// ```
     #[inline]
-    pub fn fetch_and(&self, value: usize, order: Ordering) -> MarkedPtr<T, N> {
-        MarkedPtr::from_usize(self.inner.fetch_and(Self::POINTER_MASK | value, order))
+    pub fn fetch_and(&self, value: usize, order: Ordering) -> TagPtr<T, N> {
+        TagPtr::from_usize(self.inner.fetch_and(Self::POINTER_MASK | value, order))
     }
 }
 
 /********** impl Debug ****************************************************************************/
 
-impl<T, const N: usize> fmt::Debug for AtomicMarkedPtr<T, N> {
+impl<T, const N: usize> fmt::Debug for AtomicTagPtr<T, N> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (ptr, tag) = self.load(Ordering::SeqCst).decompose();
-        f.debug_struct("AtomicMarkedPtr").field("ptr", &ptr).field("tag", &tag).finish()
+        f.debug_struct("AtomicTagPtr").field("ptr", &ptr).field("tag", &tag).finish()
     }
 }
 
 /********** impl Default **************************************************************************/
 
-impl<T, const N: usize> Default for AtomicMarkedPtr<T, N> {
+impl<T, const N: usize> Default for AtomicTagPtr<T, N> {
     impl_default!();
 }
 
 /********** impl From (*mut T) ********************************************************************/
 
-impl<T, const N: usize> From<*mut T> for AtomicMarkedPtr<T, N> {
+impl<T, const N: usize> From<*mut T> for AtomicTagPtr<T, N> {
     #[inline]
     fn from(ptr: *mut T) -> Self {
         Self::new(ptr.into())
     }
 }
 
-/********** impl From (MarkedPtr<T, N>) ***********************************************************/
+/********** impl From (TagPtr<T, N>) ***********************************************************/
 
-impl<T, const N: usize> From<MarkedPtr<T, N>> for AtomicMarkedPtr<T, N> {
+impl<T, const N: usize> From<TagPtr<T, N>> for AtomicTagPtr<T, N> {
     #[inline]
-    fn from(ptr: MarkedPtr<T, N>) -> Self {
+    fn from(ptr: TagPtr<T, N>) -> Self {
         Self::new(ptr)
     }
 }
 
 /********** impl Pointer **************************************************************************/
 
-impl<T, const N: usize> fmt::Pointer for AtomicMarkedPtr<T, N> {
+impl<T, const N: usize> fmt::Pointer for AtomicTagPtr<T, N> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Pointer::fmt(&self.load(Ordering::SeqCst), f)

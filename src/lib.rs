@@ -20,24 +20,20 @@
 //! `u16`) never use the first of their lower bits (i.e., it is always zero),
 //! pointers to types with an alignment of 8 (2^3) bytes such as `u64` never
 //! use their 3 lowest bits and so on.
-
-//! For example, the `u64` type has an alignment of 8 (or 2^3) and, therefore,
-//! no well-aligned pointer to an `u64` uses its lower 3 bits.
-//! Consequently, constructing, e.g., a `MarkedPtr<u64, 4>` is most likely an
-//! error on the part of the user of this crate, since the resulting type would
-//! consider the bit at index 3 to be part of the tag value, although it in fact
-//! is part of the pointer itself.
-//! The [`has_sufficient_alignment`] and [`assert_alignment`] can be used to
-//! explicitly check for this property.
 //!
-//! There is, however, one exception in which using "ill-formed" marked pointer
-//! types is valid:
-//! When a well-formed marked pointer is constructed (e.g., a
-//! `MarkedPtr<u64, 3>`) and then later cast to a pointer to a type with a
-//! smaller alignment, e.g., a `MarkedPtr<(), 3>` for the purpose of type
-//! erasure.
-//! The type-erased pointer can then safely modify its tag value without
-//! corrupting the original pointer.
+//! Constructing a type such as `TagPtr<u64, 4>` is hence usually a user error,
+//! since a pointer to a `u64` has only 3 unused bits.
+//! The resulting type would consider the first actual bit of the pointer to be
+//! part of its tag and return a potentially corrupted pointer in methods such
+//! as [`decompose`][TagPtr::decompose].
+//! The [`has_sufficient_alignment`] and [`assert_alignment`] functions can be
+//! used to explicitly check for or assert this property.
+//! There is, however, one exception where using an otherwise ill-formed tag
+//! pointer type is valid:
+//! After composing a well-formed tag pointer instance (e.g., `TagPtr<u64, 3>`)
+//! it is valid to [`cast`][TagPtr::cast] it to a type with a smaller alignment
+//! and the same number of tag bits such as `TagPtr<(), 3>` for the purpose of
+//! type-erasure.
 
 #![no_std]
 
@@ -47,69 +43,74 @@ extern crate std;
 #[macro_use]
 mod macros;
 
-mod imp;
+mod imp {
+    mod atomic;
+    mod non_null;
+    mod ptr;
+}
 
 use core::{marker::PhantomData, mem, ptr::NonNull, sync::atomic::AtomicUsize};
 
 // *************************************************************************************************
-// AtomicMarkedPtr (impl in "imp/atomic.rs")
+// AtomicTagPtr (impl in "imp/atomic.rs")
 // *************************************************************************************************
 
 /// A raw pointer type which can be safely shared between threads and which can
-/// store additional information in its lower (unused) bits.
+/// use up to `N` of its lower bits to store additional information (the *tag*).
 ///
 /// This type has the same in-memory representation as a `*mut T`.
 /// It is mostly identical to [`AtomicPtr`][atomic], except that all of its
-/// methods take or return a [`MarkedPtr`] instead of `*mut T`.
+/// methods take or return a [`TagPtr`] instead of `*mut T`.
+/// See the [crate][crate] level documentation for restrictions on the value of
+/// `N`.
 ///
 /// [atomic]: core::sync::atomic::AtomicPtr
 #[repr(transparent)]
-pub struct AtomicMarkedPtr<T, const N: usize> {
+pub struct AtomicTagPtr<T, const N: usize> {
     inner: AtomicUsize,
     _marker: PhantomData<*mut T>,
 }
 
 // *************************************************************************************************
-// MarkedPtr (impl in "imp/ptr.rs")
+// TagPtr (impl in "imp/ptr.rs")
 // *************************************************************************************************
 
-/// A raw, unsafe pointer type like `*mut T` in which up to `N` of the pointer's
-/// lower bits can be used to store additional information (the *tag*).
+/// A raw, unsafe pointer type like `*mut T` which can use up to `N` of its
+/// lower bits to store additional information (the *tag*).
 ///
-/// Note, that the logical upper bound for `N` is dictated by the alignment of
-/// type `T`.
-/// A type with an alignment of 8 (2^3), e.g., an `u64`, can safely store up to
-/// 3 tag bits.
-/// A type with an alignment of 16 (2^4) can safely store up to 4 tag bits, etc.
+/// This type has the same in-memory representation as a `*mut T`.
+/// See the [crate][crate] level documentation for restrictions on the value of
+/// `N`.
 #[repr(transparent)]
-pub struct MarkedPtr<T, const N: usize> {
+pub struct TagPtr<T, const N: usize> {
     inner: *mut T,
     _marker: PhantomData<()>, // the "fake" marker allows to use the same macro for all pointers
 }
 
 // *************************************************************************************************
-// MarkedNonNull (impl in "imp/non_null.rs")
+// TagNonNull (impl in "imp/non_null.rs")
 // *************************************************************************************************
 
-/// A non-nullable marked raw pointer type like [`NonNull`].
+/// A non-nullable tagged raw pointer type similar to [`NonNull`] which can use
+/// up to `N` of its lower bits to store additional information (the *tag*).
 ///
-/// Note, that the logical upper bound for `N` is dictated by the alignment of
-/// type `T`.
-/// A type with an alignment of 8 (2^3), e.g., an `u64`, can safely store up to
-/// 3 tag bits.
-/// A type with an alignment of 16 (2^4) can safely store up to 4 tag bits, etc.
+/// This type has the same in-memory representation as a `NonNull<T>`.
+/// See the [crate][crate] level documentation for restrictions on the value of
+/// `N`.
 ///
 /// # Invariants
 ///
-/// Unlike [`NonNull`], this type does not permit values that would be `null`
-/// pointers after its first `N` bits are parsed as the tag value.
-/// For instance, a pointer value `0x1`, despite not pointing at valid memory,
-/// is still valid for constructing a [`NonNull`] value.
-/// For any `N > 0`, however, this value is not a valid [`MarkedNonNull`], since
-/// it would be interpreted as a `null` pointer with a tag value of `1`.
-/// For regular, well-aligned pointers, this is usually not an issue.
+/// This type imposes stricter construction requirements than a regular
+/// [`NonNull`], since it requires the pointer to be non-null even after its `N`
+/// tag bits are stripped off as well.
+/// For instance, the value `0x1` can be used to construct a valid (but not
+/// dereferencable) [`NonNull`] since it is not zero, but it can not be used to
+/// construct e.g. a valid `TagNonNull<u64, 1>`, since its only non-zero bit
+/// would be considered to represent the tag and the value of the pointer would
+/// be 0.
+/// For valid, well-aligned pointers, this is usually not a concern.
 #[repr(transparent)]
-pub struct MarkedNonNull<T, const N: usize> {
+pub struct TagNonNull<T, const N: usize> {
     inner: NonNull<T>,
     _marker: PhantomData<()>,
 }
@@ -174,14 +175,14 @@ fn compose<T, const N: usize>(ptr: *mut T, tag: usize) -> *mut T {
     ((ptr as usize) | (mark_mask(N) & tag)) as *mut _
 }
 
-/// Decomposes the integer representation of a `marked_ptr` for a given number
-/// of `tag_bits` into only a raw pointer.
+/// Decomposes the integer representation of a `ptr` for a given number
+/// of `tag_bits` into only a raw pointer stripped of its tag.
 #[inline(always)]
 const fn decompose_ptr<T>(ptr: usize, tag_bits: usize) -> *mut T {
     (ptr & !mark_mask(tag_bits)) as *mut _
 }
 
-/// Decomposes the integer representation of a `marked_ptr` for a given number
+/// Decomposes the integer representation of a `ptr` for a given number
 /// of `tag_bits` into only a separated tag value.
 #[inline(always)]
 const fn decompose_tag<T>(ptr: usize, tag_bits: usize) -> usize {

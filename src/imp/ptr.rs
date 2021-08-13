@@ -5,21 +5,21 @@ use core::{
     ptr::{self, NonNull},
 };
 
-use crate::{MarkedNonNull, MarkedPtr};
+use crate::{TagNonNull, TagPtr};
 
 /********** impl Clone ****************************************************************************/
 
-impl<T, const N: usize> Clone for MarkedPtr<T, N> {
+impl<T, const N: usize> Clone for TagPtr<T, N> {
     impl_clone!();
 }
 
 /********** impl Copy *****************************************************************************/
 
-impl<T, const N: usize> Copy for MarkedPtr<T, N> {}
+impl<T, const N: usize> Copy for TagPtr<T, N> {}
 
 /********** impl inherent *************************************************************************/
 
-impl<T, const N: usize> MarkedPtr<T, N> {
+impl<T, const N: usize> TagPtr<T, N> {
     doc_comment! {
         doc_tag_bits!(),
         pub const TAG_BITS: usize = N;
@@ -43,9 +43,9 @@ impl<T, const N: usize> MarkedPtr<T, N> {
         /// ```
         /// use core::ptr;
         ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+        /// type TagPtr = tagptr::TagPtr<i32, 2>;
         ///
-        /// let ptr = MarkedPtr::null();
+        /// let ptr = TagPtr::null();
         /// assert_eq!(ptr.decompose(), (ptr::null_mut(), 0));
         /// ```
         #[inline]
@@ -62,10 +62,10 @@ impl<T, const N: usize> MarkedPtr<T, N> {
         /// ```
         /// use core::ptr;
         ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+        /// type TagPtr = tagptr::TagPtr<i32, 2>;
         ///
         /// let reference = &mut 1;
-        /// let ptr = MarkedPtr::new(reference);
+        /// let ptr = TagPtr::new(reference);
         /// assert_eq!(ptr.decompose(), (reference as *mut _, 0));
         /// ```
         #[inline]
@@ -82,9 +82,9 @@ impl<T, const N: usize> MarkedPtr<T, N> {
         /// ```
         /// use core::ptr;
         ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+        /// type TagPtr = tagptr::TagPtr<i32, 2>;
         ///
-        /// let ptr = MarkedPtr::from_usize(0b11);
+        /// let ptr = TagPtr::from_usize(0b11);
         /// assert_eq!(ptr.decompose(), (ptr::null_mut(), 0b11));
         /// ```
         #[inline]
@@ -101,9 +101,9 @@ impl<T, const N: usize> MarkedPtr<T, N> {
         /// ```
         /// use core::ptr;
         ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+        /// type TagPtr = tagptr::TagPtr<i32, 2>;
         ///
-        /// let ptr = MarkedPtr::from_usize(0b11);
+        /// let ptr = TagPtr::from_usize(0b11);
         /// assert_eq!(ptr.into_raw(), 0b11 as *mut _);
         /// ```
         #[inline]
@@ -114,8 +114,8 @@ impl<T, const N: usize> MarkedPtr<T, N> {
 
     doc_comment! {
         doc_cast!(),
-        pub const fn cast<U>(self) -> MarkedPtr<U, N> {
-            MarkedPtr { inner: self.inner.cast(), _marker: PhantomData }
+        pub const fn cast<U>(self) -> TagPtr<U, N> {
+            TagPtr { inner: self.inner.cast(), _marker: PhantomData }
         }
     }
 
@@ -127,9 +127,9 @@ impl<T, const N: usize> MarkedPtr<T, N> {
         /// ```
         /// use core::ptr;
         ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+        /// type TagPtr = tagptr::TagPtr<i32, 2>;
         ///
-        /// let ptr = MarkedPtr::from_usize(0b11);
+        /// let ptr = TagPtr::from_usize(0b11);
         /// assert_eq!(ptr.into_usize(), 0b11);
         /// ```
         #[inline]
@@ -146,13 +146,13 @@ impl<T, const N: usize> MarkedPtr<T, N> {
         /// ```
         /// use core::ptr;
         ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+        /// type TagPtr = tagptr::TagPtr<i32, 2>;
         ///
         /// let raw = &1 as *const i32 as *mut i32;
-        /// let ptr = MarkedPtr::compose(raw, 0b11);
+        /// let ptr = TagPtr::compose(raw, 0b11);
         /// assert_eq!(ptr.decompose(), (raw, 0b11));
         /// // excess bits are silently truncated
-        /// let ptr = MarkedPtr::compose(raw, 0b101);
+        /// let ptr = TagPtr::compose(raw, 0b101);
         /// assert_eq!(ptr.decompose(), (raw, 0b01));
         /// ```
         #[inline]
@@ -168,9 +168,9 @@ impl<T, const N: usize> MarkedPtr<T, N> {
     /// ```
     /// use core::ptr;
     ///
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+    /// type TagPtr = tagptr::TagPtr<i32, 2>;
     ///
-    /// let ptr = MarkedPtr::compose(ptr::null_mut(), 0b11);
+    /// let ptr = TagPtr::compose(ptr::null_mut(), 0b11);
     /// assert!(ptr.is_null());
     /// ```
     #[inline]
@@ -184,10 +184,10 @@ impl<T, const N: usize> MarkedPtr<T, N> {
         /// # Examples
         ///
         /// ```
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+        /// type TagPtr = tagptr::TagPtr<i32, 2>;
         ///
         /// let reference = &mut 1;
-        /// let ptr = MarkedPtr::compose(reference, 0b11);
+        /// let ptr = TagPtr::compose(reference, 0b11);
         ///
         /// assert_eq!(ptr.clear_tag().decompose(), (reference as *mut _, 0));
         /// ```
@@ -203,12 +203,12 @@ impl<T, const N: usize> MarkedPtr<T, N> {
         /// # Examples
         ///
         /// ```
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+        /// type TagPtr = tagptr::TagPtr<i32, 2>;
         ///
         /// let reference = &mut 1;
-        /// let ptr = MarkedPtr::compose(reference, 0b11);
+        /// let ptr = TagPtr::compose(reference, 0b11);
         ///
-        /// assert_eq!(ptr.split_tag(), (MarkedPtr::new(reference), 0b11));
+        /// assert_eq!(ptr.split_tag(), (TagPtr::new(reference), 0b11));
         /// ```
         #[inline]
         pub fn split_tag(self) -> (Self, usize) {
@@ -223,10 +223,10 @@ impl<T, const N: usize> MarkedPtr<T, N> {
         /// # Examples
         ///
         /// ```
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+        /// type TagPtr = tagptr::TagPtr<i32, 2>;
         ///
         /// let reference = &mut 1;
-        /// let ptr = MarkedPtr::compose(reference, 0b11);
+        /// let ptr = TagPtr::compose(reference, 0b11);
         ///
         /// assert_eq!(ptr.set_tag(0b01).decompose(), (reference as *mut _, 0b01));
         /// ```
@@ -243,10 +243,10 @@ impl<T, const N: usize> MarkedPtr<T, N> {
         /// # Examples
         ///
         /// ```
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+        /// type TagPtr = tagptr::TagPtr<i32, 2>;
         ///
         /// let reference = &mut 1;
-        /// let ptr = MarkedPtr::compose(reference, 0b11);
+        /// let ptr = TagPtr::compose(reference, 0b11);
         ///
         /// assert_eq!(ptr.update_tag(|tag| tag - 1).decompose(), (reference as *mut _, 0b10));
         /// ```
@@ -263,10 +263,10 @@ impl<T, const N: usize> MarkedPtr<T, N> {
         /// # Examples
         ///
         /// ```
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+        /// type TagPtr = tagptr::TagPtr<i32, 2>;
         ///
         /// let reference = &mut 1;
-        /// let ptr = MarkedPtr::compose(reference, 0b10);
+        /// let ptr = TagPtr::compose(reference, 0b10);
         ///
         /// assert_eq!(ptr.add_tag(1).decompose(), (reference as *mut _, 0b11));
         /// ```
@@ -282,10 +282,10 @@ impl<T, const N: usize> MarkedPtr<T, N> {
         /// # Examples
         ///
         /// ```
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+        /// type TagPtr = tagptr::TagPtr<i32, 2>;
         ///
         /// let reference = &mut 1;
-        /// let ptr = MarkedPtr::compose(reference, 0b10);
+        /// let ptr = TagPtr::compose(reference, 0b10);
         ///
         /// assert_eq!(ptr.sub_tag(1).decompose(), (reference as *mut _, 0b01));
         /// ```
@@ -327,10 +327,10 @@ impl<T, const N: usize> MarkedPtr<T, N> {
         /// ```
         /// use core::ptr;
         ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+        /// type TagPtr = tagptr::TagPtr<i32, 2>;
         ///
         /// let reference = &1;
-        /// let ptr = MarkedPtr::compose(reference as *const _ as *mut _, 0b11);
+        /// let ptr = TagPtr::compose(reference as *const _ as *mut _, 0b11);
         ///
         /// unsafe {
         ///     assert_eq!(ptr.as_ref(), Some(&1));
@@ -343,17 +343,17 @@ impl<T, const N: usize> MarkedPtr<T, N> {
     }
 
     doc_comment! {
-        doc_as_mut!("nullable", MarkedPtr),
+        doc_as_mut!("nullable", TagPtr),
         ///
         /// # Examples
         ///
         /// ```
         /// use core::ptr;
         ///
-        /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+        /// type TagPtr = tagptr::TagPtr<i32, 2>;
         ///
         /// let mut val = 1;
-        /// let ptr = MarkedPtr::compose(&mut val, 0b11);
+        /// let ptr = TagPtr::compose(&mut val, 0b11);
         ///
         /// unsafe {
         ///     assert_eq!(ptr.as_mut(), Some(&mut 1));
@@ -370,17 +370,17 @@ impl<T, const N: usize> MarkedPtr<T, N> {
     ///
     /// # Safety
     ///
-    /// The same safety caveats as with [`as_ref`][MarkedPtr::as_ref] apply.
+    /// The same safety caveats as with [`as_ref`][TagPtr::as_ref] apply.
     ///
     /// # Examples
     ///
     /// ```
     /// use core::ptr;
     ///
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+    /// type TagPtr = tagptr::TagPtr<i32, 2>;
     ///
     /// let reference = &1;
-    /// let ptr = MarkedPtr::compose(reference as *const _ as *mut _, 0b11);
+    /// let ptr = TagPtr::compose(reference as *const _ as *mut _, 0b11);
     ///
     /// unsafe {
     ///     assert_eq!(ptr.decompose_ref(), (Some(&1), 0b11));
@@ -396,17 +396,17 @@ impl<T, const N: usize> MarkedPtr<T, N> {
     ///
     /// # Safety
     ///
-    /// The same safety caveats as with [`as_mut`][MarkedPtr::as_mut] apply.
+    /// The same safety caveats as with [`as_mut`][TagPtr::as_mut] apply.
     ///
     /// # Examples
     ///
     /// ```
     /// use core::ptr;
     ///
-    /// type MarkedPtr = conquer_pointer::MarkedPtr<i32, 2>;
+    /// type TagPtr = tagptr::TagPtr<i32, 2>;
     ///
     /// let mut val = 1;
-    /// let ptr = MarkedPtr::compose(&mut val, 0b11);
+    /// let ptr = TagPtr::compose(&mut val, 0b11);
     ///
     /// unsafe {
     ///     assert_eq!(ptr.decompose_mut(), (Some(&mut 1), 0b11));
@@ -420,19 +420,19 @@ impl<T, const N: usize> MarkedPtr<T, N> {
 
 /********** impl Debug ****************************************************************************/
 
-impl<T, const N: usize> fmt::Debug for MarkedPtr<T, N> {
-    impl_debug!("MarkedPtr");
+impl<T, const N: usize> fmt::Debug for TagPtr<T, N> {
+    impl_debug!("TagPtr");
 }
 
 /********** impl Default **************************************************************************/
 
-impl<T, const N: usize> Default for MarkedPtr<T, N> {
+impl<T, const N: usize> Default for TagPtr<T, N> {
     impl_default!();
 }
 
 /********** impl From (*mut T) ********************************************************************/
 
-impl<T, const N: usize> From<*mut T> for MarkedPtr<T, N> {
+impl<T, const N: usize> From<*mut T> for TagPtr<T, N> {
     #[inline]
     fn from(ptr: *mut T) -> Self {
         Self::new(ptr)
@@ -441,7 +441,7 @@ impl<T, const N: usize> From<*mut T> for MarkedPtr<T, N> {
 
 /********** impl From (*const T) ******************************************************************/
 
-impl<T, const N: usize> From<*const T> for MarkedPtr<T, N> {
+impl<T, const N: usize> From<*const T> for TagPtr<T, N> {
     #[inline]
     fn from(ptr: *const T) -> Self {
         Self::new(ptr as _)
@@ -450,7 +450,7 @@ impl<T, const N: usize> From<*const T> for MarkedPtr<T, N> {
 
 /********** impl From (&T) ************************************************************************/
 
-impl<T, const N: usize> From<&T> for MarkedPtr<T, N> {
+impl<T, const N: usize> From<&T> for TagPtr<T, N> {
     #[inline]
     fn from(reference: &T) -> Self {
         Self::from(reference as *const _)
@@ -459,7 +459,7 @@ impl<T, const N: usize> From<&T> for MarkedPtr<T, N> {
 
 /********** impl From ((&T, usize)) ***************************************************************/
 
-impl<T, const N: usize> From<(&T, usize)> for MarkedPtr<T, N> {
+impl<T, const N: usize> From<(&T, usize)> for TagPtr<T, N> {
     #[inline]
     fn from((reference, tag): (&T, usize)) -> Self {
         Self::compose(reference as *const T as *mut T, tag)
@@ -468,7 +468,7 @@ impl<T, const N: usize> From<(&T, usize)> for MarkedPtr<T, N> {
 
 /********** impl From (&mut T) ********************************************************************/
 
-impl<T, const N: usize> From<&mut T> for MarkedPtr<T, N> {
+impl<T, const N: usize> From<&mut T> for TagPtr<T, N> {
     #[inline]
     fn from(reference: &mut T) -> Self {
         Self::from(reference as *const _)
@@ -477,7 +477,7 @@ impl<T, const N: usize> From<&mut T> for MarkedPtr<T, N> {
 
 /********** impl From ((&mut T, usize)) ***********************************************************/
 
-impl<T, const N: usize> From<(&mut T, usize)> for MarkedPtr<T, N> {
+impl<T, const N: usize> From<(&mut T, usize)> for TagPtr<T, N> {
     #[inline]
     fn from((reference, tag): (&mut T, usize)) -> Self {
         Self::compose(reference, tag)
@@ -486,94 +486,94 @@ impl<T, const N: usize> From<(&mut T, usize)> for MarkedPtr<T, N> {
 
 /********** impl From (NonNull) *******************************************************************/
 
-impl<T, const N: usize> From<NonNull<T>> for MarkedPtr<T, N> {
+impl<T, const N: usize> From<NonNull<T>> for TagPtr<T, N> {
     #[inline]
     fn from(ptr: NonNull<T>) -> Self {
         Self::new(ptr.as_ptr())
     }
 }
 
-/********** impl From (MarkedNonNull) *************************************************************/
+/********** impl From (TagNonNull) *************************************************************/
 
-impl<T, const N: usize> From<MarkedNonNull<T, N>> for MarkedPtr<T, N> {
+impl<T, const N: usize> From<TagNonNull<T, N>> for TagPtr<T, N> {
     #[inline]
-    fn from(ptr: MarkedNonNull<T, N>) -> Self {
+    fn from(ptr: TagNonNull<T, N>) -> Self {
         ptr.into_marked_ptr()
     }
 }
 
 /********** impl PartialEq ************************************************************************/
 
-impl<T, const N: usize> PartialEq for MarkedPtr<T, N> {
+impl<T, const N: usize> PartialEq for TagPtr<T, N> {
     impl_partial_eq!();
 }
 
 /********** impl PartialOrd ***********************************************************************/
 
-impl<T, const N: usize> PartialOrd for MarkedPtr<T, N> {
+impl<T, const N: usize> PartialOrd for TagPtr<T, N> {
     impl_partial_ord!();
 }
 
 /********** impl Pointer **************************************************************************/
 
-impl<T, const N: usize> fmt::Pointer for MarkedPtr<T, N> {
+impl<T, const N: usize> fmt::Pointer for TagPtr<T, N> {
     impl_pointer!();
 }
 
 /********** impl Eq *******************************************************************************/
 
-impl<T, const N: usize> Eq for MarkedPtr<T, N> {}
+impl<T, const N: usize> Eq for TagPtr<T, N> {}
 
 /********** impl Ord ******************************************************************************/
 
-impl<T, const N: usize> Ord for MarkedPtr<T, N> {
+impl<T, const N: usize> Ord for TagPtr<T, N> {
     impl_ord!();
 }
 
 /********** impl Hash *****************************************************************************/
 
-impl<T, const N: usize> Hash for MarkedPtr<T, N> {
+impl<T, const N: usize> Hash for TagPtr<T, N> {
     impl_hash!();
 }
 
 #[cfg(test)]
 mod tests {
-    type MarkedPtr = crate::MarkedPtr<i32, 2>;
+    type TagPtr = crate::TagPtr<i32, 2>;
 
     #[test]
     fn test_debug() {
         let reference = &mut 1;
-        let ptr = MarkedPtr::compose(reference, 0b11);
+        let ptr = TagPtr::compose(reference, 0b11);
         assert_eq!(
             std::format!("{:?}", ptr),
-            std::format!("MarkedPtr {{ ptr: {:0p}, tag: {} }}", reference as *mut _, 0b11)
+            std::format!("TagPtr {{ ptr: {:0p}, tag: {} }}", reference as *mut _, 0b11)
         );
     }
 
     #[test]
     fn test_cast() {
-        type ErasedPtr = crate::MarkedPtr<(), 2>;
+        type ErasedPtr = crate::TagPtr<(), 2>;
 
         let reference = &mut 1;
-        let ptr = MarkedPtr::compose(reference, 0b11);
+        let ptr = TagPtr::compose(reference, 0b11);
         let cast: ErasedPtr = ptr.cast().set_tag(0b10);
 
         assert_eq!(cast.into_usize(), reference as *mut _ as usize | 0b10);
-        assert_eq!(cast.cast(), MarkedPtr::compose(reference, 0b10));
+        assert_eq!(cast.cast(), TagPtr::compose(reference, 0b10));
     }
 
     #[test]
     fn test_from_usize() {
         let reference = &1;
-        let ptr = MarkedPtr::from_usize(reference as *const i32 as usize | 0b1);
+        let ptr = TagPtr::from_usize(reference as *const i32 as usize | 0b1);
         assert_eq!(ptr.decompose(), (reference as *const _ as *mut _, 0b1));
     }
 
     #[test]
     fn test_compose() {
         let reference = &mut 1;
-        let ptr1 = MarkedPtr::compose(reference, 0b11);
-        let ptr2 = MarkedPtr::compose(reference, 0b111);
+        let ptr1 = TagPtr::compose(reference, 0b11);
+        let ptr2 = TagPtr::compose(reference, 0b111);
         // compose silently truncates excess bits, so ptr1 and ptr2 are identical
         assert_eq!(ptr1, ptr2);
         assert_eq!(ptr2.decompose(), (reference as *mut _, 0b11));
@@ -582,7 +582,7 @@ mod tests {
     #[test]
     fn test_set_tag() {
         let reference = &mut 1;
-        let ptr = MarkedPtr::compose(reference, 0b11);
+        let ptr = TagPtr::compose(reference, 0b11);
         // set_tag must silently truncate excess tag bits
         assert_eq!(ptr, ptr.set_tag(0b111));
     }
@@ -590,7 +590,7 @@ mod tests {
     #[test]
     fn test_overflow_tag() {
         let reference = &mut 1;
-        let ptr = MarkedPtr::compose(reference, 0b11);
+        let ptr = TagPtr::compose(reference, 0b11);
 
         // add must cause overflow (corrupt the pointer)
         assert_eq!(ptr.add_tag(1).into_usize(), reference as *mut _ as usize + 0b11 + 1);
@@ -601,7 +601,7 @@ mod tests {
     #[test]
     fn test_underflow_tag() {
         let reference = &mut 1;
-        let ptr = MarkedPtr::new(reference);
+        let ptr = TagPtr::new(reference);
 
         // sub_tag must underflow the entire pointer
         assert_eq!(ptr.sub_tag(1).into_usize(), reference as *mut _ as usize - 1);
@@ -618,10 +618,10 @@ mod tests {
         struct Aligned64(i32);
 
         let reference = &Aligned64(1);
-        let ptr = crate::MarkedPtr::<Aligned64, 6>::from((reference, 55));
-        let mut erased: crate::MarkedPtr<(), 6> = ptr.cast();
+        let ptr = crate::TagPtr::<Aligned64, 6>::from((reference, 55));
+        let mut erased: crate::TagPtr<(), 6> = ptr.cast();
         erased = erased.update_tag(|tag| tag + 3);
-        let ptr: crate::MarkedPtr<Aligned64, 6> = erased.cast();
+        let ptr: crate::TagPtr<Aligned64, 6> = erased.cast();
 
         assert_eq!(ptr.decompose(), (reference as *const _ as *mut _, 58));
     }
