@@ -73,10 +73,6 @@ mod imp {
 
 use core::{marker::PhantomData, mem, ptr::NonNull, sync::atomic::AtomicUsize};
 
-// *************************************************************************************************
-// AtomicTagPtr (impl in "imp/atomic.rs")
-// *************************************************************************************************
-
 /// A raw pointer type which can be safely shared between threads and which can
 /// use up to `N` of its lower bits to store additional information (the *tag*).
 ///
@@ -93,10 +89,6 @@ pub struct AtomicTagPtr<T, const N: usize> {
     _marker: PhantomData<*mut T>,
 }
 
-// *************************************************************************************************
-// TagPtr (impl in "imp/ptr.rs")
-// *************************************************************************************************
-
 /// A raw, unsafe pointer type like `*mut T` which can use up to `N` of its
 /// lower bits to store additional information (the *tag*).
 ///
@@ -106,12 +98,9 @@ pub struct AtomicTagPtr<T, const N: usize> {
 #[repr(transparent)]
 pub struct TagPtr<T, const N: usize> {
     inner: *mut T,
-    _marker: PhantomData<()>, // the "fake" marker allows to use the same macro for all pointers
+    /// "fake" marker allows using same macro for all types.
+    _marker: PhantomData<()>,
 }
-
-// *************************************************************************************************
-// TagNonNull (impl in "imp/non_null.rs")
-// *************************************************************************************************
 
 /// A non-nullable tagged raw pointer type similar to [`NonNull`] which can use
 /// up to `N` of its lower bits to store additional information (the *tag*).
@@ -137,10 +126,6 @@ pub struct TagNonNull<T, const N: usize> {
     _marker: PhantomData<()>,
 }
 
-// *************************************************************************************************
-// Null
-// *************************************************************************************************
-
 /// A type representing a `null` pointer with potential tag bits.
 ///
 /// The contained `usize` is the value of the pointer's tag.
@@ -148,21 +133,15 @@ pub struct TagNonNull<T, const N: usize> {
 #[repr(transparent)]
 pub struct Null(pub usize);
 
-/********** impl inherent *************************************************************************/
-
 impl Null {
     /// Returns the tag value.
-    #[inline]
-    pub fn tag(self) -> usize {
+    pub const fn tag(self) -> usize {
         self.0
     }
 }
 
-/********** public functions **********************************************************************/
-
 /// Returns `true` if the alignment of `T` is large enough so a pointer to an
 /// instance may store the given number of `tag_bits`.
-#[inline]
 pub const fn has_sufficient_alignment<T>(tag_bits: usize) -> bool {
     lower_bits::<T>() >= tag_bits
 }
@@ -174,52 +153,44 @@ pub const fn has_sufficient_alignment<T>(tag_bits: usize) -> bool {
 ///
 /// This function panics if the alignment of `U` is insufficient for storing
 /// `N` tag bits.
-#[inline]
-pub fn assert_alignment<T, const N: usize>() {
+pub const fn assert_alignment<T, const N: usize>() {
     assert!(
         has_sufficient_alignment::<T>(N),
         "the respective type has insufficient alignment for storing N tag bits"
     );
 }
 
-/********** helper functions **********************************************************************/
-
-/// Composes the given `ptr` with `tag` and returns the composed marked pointer
+/// Composes the given `ptr` with `tag` and returns the composed tagged pointer
 /// as a raw `*mut T`.
 ///
 /// # Panics
 ///
 /// Panics in *debug builds only* if `ptr` is not well aligned, i.e., if it
 /// contains any bits in its lower bits reserved for the tag value.
-#[inline(always)]
 fn compose<T, const N: usize>(ptr: *mut T, tag: usize) -> *mut T {
-    debug_assert_eq!(ptr as usize & mark_mask(N), 0, "tag bits in raw pointer must be zeroed");
-    ((ptr as usize) | (mark_mask(N) & tag)) as *mut _
+    debug_assert_eq!(ptr as usize & tag_mask(N), 0, "tag bits in raw pointer must be zeroed");
+    ((ptr as usize) | (tag_mask(N) & tag)) as *mut _
 }
 
 /// Decomposes the integer representation of a `ptr` for a given number
 /// of `tag_bits` into only a raw pointer stripped of its tag.
-#[inline(always)]
 const fn decompose_ptr<T>(ptr: usize, tag_bits: usize) -> *mut T {
-    (ptr & !mark_mask(tag_bits)) as *mut _
+    (ptr & !tag_mask(tag_bits)) as *mut _
 }
 
 /// Decomposes the integer representation of a `ptr` for a given number
 /// of `tag_bits` into only a separated tag value.
-#[inline(always)]
 const fn decompose_tag<T>(ptr: usize, tag_bits: usize) -> usize {
-    ptr & mark_mask(tag_bits)
+    ptr & tag_mask(tag_bits)
 }
 
 /// Returns the (alignment-dependent) number of unused lower bits in a pointer
 /// to type `T`.
-#[inline(always)]
 const fn lower_bits<T>() -> usize {
     mem::align_of::<T>().trailing_zeros() as usize
 }
 
 /// Returns the bit-mask for the lower bits containing the tag value.
-#[inline(always)]
-const fn mark_mask(tag_bits: usize) -> usize {
+const fn tag_mask(tag_bits: usize) -> usize {
     (1 << tag_bits) - 1
 }

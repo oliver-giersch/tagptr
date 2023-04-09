@@ -10,17 +10,11 @@ use core::{
 
 use crate::{Null, TagNonNull, TagPtr};
 
-/********** impl Clone ****************************************************************************/
-
 impl<T, const N: usize> Clone for TagNonNull<T, N> {
     impl_clone!();
 }
 
-/********** impl Copy *****************************************************************************/
-
 impl<T, const N: usize> Copy for TagNonNull<T, N> {}
-
-/********** impl inherent *************************************************************************/
 
 impl<T, const N: usize> TagNonNull<T, N> {
     doc_comment! {
@@ -30,7 +24,7 @@ impl<T, const N: usize> TagNonNull<T, N> {
 
     doc_comment! {
         doc_tag_mask!(),
-        pub const TAG_MASK: usize = crate::mark_mask(Self::TAG_BITS);
+        pub const TAG_MASK: usize = crate::tag_mask(Self::TAG_BITS);
     }
 
     doc_comment! {
@@ -295,19 +289,13 @@ impl<T, const N: usize> TagNonNull<T, N> {
     }
 }
 
-/********** impl Debug ****************************************************************************/
-
 impl<T, const N: usize> fmt::Debug for TagNonNull<T, N> {
     impl_debug!("TagNonNull");
 }
 
-/********** impl Pointer **************************************************************************/
-
 impl<T, const N: usize> fmt::Pointer for TagNonNull<T, N> {
     impl_pointer!();
 }
-
-/********** impl From (&T) ************************************************************************/
 
 impl<T, const N: usize> From<&T> for TagNonNull<T, N> {
     #[inline]
@@ -316,8 +304,6 @@ impl<T, const N: usize> From<&T> for TagNonNull<T, N> {
     }
 }
 
-/********** impl From (&mut T) ********************************************************************/
-
 impl<T, const N: usize> From<&mut T> for TagNonNull<T, N> {
     #[inline]
     fn from(reference: &mut T) -> Self {
@@ -325,35 +311,23 @@ impl<T, const N: usize> From<&mut T> for TagNonNull<T, N> {
     }
 }
 
-/********** impl PartialEq ************************************************************************/
-
 impl<T, const N: usize> PartialEq for TagNonNull<T, N> {
     impl_partial_eq!();
 }
-
-/********** impl PartialOrd ***********************************************************************/
 
 impl<T, const N: usize> PartialOrd for TagNonNull<T, N> {
     impl_partial_ord!();
 }
 
-/********** impl Eq *******************************************************************************/
-
 impl<T, const N: usize> Eq for TagNonNull<T, N> {}
-
-/********** impl Ord ******************************************************************************/
 
 impl<T, const N: usize> Ord for TagNonNull<T, N> {
     impl_ord!();
 }
 
-/********** impl Hash *****************************************************************************/
-
 impl<T, const N: usize> Hash for TagNonNull<T, N> {
     impl_hash!();
 }
-
-/********** impl TryFrom (*mut T) *****************************************************************/
 
 impl<T, const N: usize> TryFrom<*mut T> for TagNonNull<T, N> {
     type Error = Null;
@@ -364,8 +338,6 @@ impl<T, const N: usize> TryFrom<*mut T> for TagNonNull<T, N> {
     }
 }
 
-/********** impl TryFrom (*const T) ***************************************************************/
-
 impl<T, const N: usize> TryFrom<*const T> for TagNonNull<T, N> {
     type Error = Null;
 
@@ -375,8 +347,6 @@ impl<T, const N: usize> TryFrom<*const T> for TagNonNull<T, N> {
     }
 }
 
-/********** impl TryFrom (TagPtr) **************************************************************/
-
 impl<T, const N: usize> TryFrom<TagPtr<T, N>> for TagNonNull<T, N> {
     type Error = Null;
 
@@ -385,8 +355,6 @@ impl<T, const N: usize> TryFrom<TagPtr<T, N>> for TagNonNull<T, N> {
         Self::try_from(ptr.into_raw())
     }
 }
-
-/********** impl TryFrom (NonNull) ****************************************************************/
 
 impl<T, const N: usize> TryFrom<NonNull<T>> for TagNonNull<T, N> {
     type Error = Null;

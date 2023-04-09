@@ -6,12 +6,8 @@ use core::{
 
 use crate::{AtomicTagPtr, TagPtr};
 
-/********** impl Send + Sync **********************************************************************/
-
 unsafe impl<T, const N: usize> Send for AtomicTagPtr<T, N> {}
 unsafe impl<T, const N: usize> Sync for AtomicTagPtr<T, N> {}
-
-/********** impl inherent *************************************************************************/
 
 impl<T, const N: usize> AtomicTagPtr<T, N> {
     doc_comment! {
@@ -21,7 +17,7 @@ impl<T, const N: usize> AtomicTagPtr<T, N> {
 
     doc_comment! {
         doc_tag_mask!(),
-        pub const TAG_MASK: usize = crate::mark_mask(Self::TAG_BITS);
+        pub const TAG_MASK: usize = crate::tag_mask(Self::TAG_BITS);
     }
 
     doc_comment! {
@@ -413,8 +409,6 @@ impl<T, const N: usize> AtomicTagPtr<T, N> {
     }
 }
 
-/********** impl Debug ****************************************************************************/
-
 impl<T, const N: usize> fmt::Debug for AtomicTagPtr<T, N> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -423,13 +417,9 @@ impl<T, const N: usize> fmt::Debug for AtomicTagPtr<T, N> {
     }
 }
 
-/********** impl Default **************************************************************************/
-
 impl<T, const N: usize> Default for AtomicTagPtr<T, N> {
     impl_default!();
 }
-
-/********** impl From (*mut T) ********************************************************************/
 
 impl<T, const N: usize> From<*mut T> for AtomicTagPtr<T, N> {
     #[inline]
@@ -438,16 +428,12 @@ impl<T, const N: usize> From<*mut T> for AtomicTagPtr<T, N> {
     }
 }
 
-/********** impl From (TagPtr<T, N>) ***********************************************************/
-
 impl<T, const N: usize> From<TagPtr<T, N>> for AtomicTagPtr<T, N> {
     #[inline]
     fn from(ptr: TagPtr<T, N>) -> Self {
         Self::new(ptr)
     }
 }
-
-/********** impl Pointer **************************************************************************/
 
 impl<T, const N: usize> fmt::Pointer for AtomicTagPtr<T, N> {
     #[inline]

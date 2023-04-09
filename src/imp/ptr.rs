@@ -7,17 +7,11 @@ use core::{
 
 use crate::{TagNonNull, TagPtr};
 
-/********** impl Clone ****************************************************************************/
-
 impl<T, const N: usize> Clone for TagPtr<T, N> {
     impl_clone!();
 }
 
-/********** impl Copy *****************************************************************************/
-
 impl<T, const N: usize> Copy for TagPtr<T, N> {}
-
-/********** impl inherent *************************************************************************/
 
 impl<T, const N: usize> TagPtr<T, N> {
     doc_comment! {
@@ -27,7 +21,7 @@ impl<T, const N: usize> TagPtr<T, N> {
 
     doc_comment! {
         doc_tag_mask!(),
-        pub const TAG_MASK: usize = crate::mark_mask(Self::TAG_BITS);
+        pub const TAG_MASK: usize = crate::tag_mask(Self::TAG_BITS);
     }
 
     doc_comment! {
@@ -48,7 +42,6 @@ impl<T, const N: usize> TagPtr<T, N> {
         /// let ptr = TagPtr::null();
         /// assert_eq!(ptr.decompose(), (ptr::null_mut(), 0));
         /// ```
-        #[inline]
         pub const fn null() -> Self {
             Self::new(ptr::null_mut())
         }
@@ -66,7 +59,6 @@ impl<T, const N: usize> TagPtr<T, N> {
         /// let ptr = TagPtr::new(reference);
         /// assert_eq!(ptr.decompose(), (reference as *mut _, 0));
         /// ```
-        #[inline]
         pub const fn new(ptr: *mut T) -> Self {
             Self { inner: ptr, _marker: PhantomData }
         }
@@ -85,7 +77,6 @@ impl<T, const N: usize> TagPtr<T, N> {
         /// let ptr = TagPtr::from_usize(0b11);
         /// assert_eq!(ptr.decompose(), (ptr::null_mut(), 0b11));
         /// ```
-        #[inline]
         pub const fn from_usize(val: usize) -> Self {
             Self::new(val as _)
         }
@@ -102,7 +93,6 @@ impl<T, const N: usize> TagPtr<T, N> {
         /// let ptr = TagPtr::from_usize(0b11);
         /// assert_eq!(ptr.into_raw(), 0b11 as *mut _);
         /// ```
-        #[inline]
         pub const fn into_raw(self) -> *mut T {
             self.inner
         }
@@ -126,7 +116,6 @@ impl<T, const N: usize> TagPtr<T, N> {
         /// let ptr = TagPtr::from_usize(0b11);
         /// assert_eq!(ptr.into_usize(), 0b11);
         /// ```
-        #[inline]
         pub fn into_usize(self) -> usize {
             self.inner as usize
         }
@@ -147,7 +136,6 @@ impl<T, const N: usize> TagPtr<T, N> {
         /// let ptr = TagPtr::compose(raw, 0b101);
         /// assert_eq!(ptr.decompose(), (raw, 0b01));
         /// ```
-        #[inline]
         pub fn compose(ptr: *mut T, tag: usize) -> Self {
             Self::new(crate::compose::<T, N>(ptr, tag))
         }
@@ -165,7 +153,6 @@ impl<T, const N: usize> TagPtr<T, N> {
     /// let ptr = TagPtr::compose(ptr::null_mut(), 0b11);
     /// assert!(ptr.is_null());
     /// ```
-    #[inline]
     pub fn is_null(self) -> bool {
         self.decompose_ptr().is_null()
     }
@@ -183,7 +170,6 @@ impl<T, const N: usize> TagPtr<T, N> {
         ///
         /// assert_eq!(ptr.clear_tag().decompose(), (reference as *mut _, 0));
         /// ```
-        #[inline]
         pub fn clear_tag(self) -> Self {
             Self::new(self.decompose_ptr())
         }
@@ -202,7 +188,6 @@ impl<T, const N: usize> TagPtr<T, N> {
         ///
         /// assert_eq!(ptr.split_tag(), (TagPtr::new(reference), 0b11));
         /// ```
-        #[inline]
         pub fn split_tag(self) -> (Self, usize) {
             let (ptr, tag) = self.decompose();
             (Self::new(ptr), tag)
@@ -222,7 +207,6 @@ impl<T, const N: usize> TagPtr<T, N> {
         ///
         /// assert_eq!(ptr.set_tag(0b01).decompose(), (reference as *mut _, 0b01));
         /// ```
-        #[inline]
         pub fn set_tag(self, tag: usize) -> Self {
             let ptr = self.decompose_ptr();
             Self::compose(ptr, tag)
@@ -242,7 +226,6 @@ impl<T, const N: usize> TagPtr<T, N> {
         ///
         /// assert_eq!(ptr.update_tag(|tag| tag - 1).decompose(), (reference as *mut _, 0b10));
         /// ```
-        #[inline]
         pub fn update_tag(self, func: impl FnOnce(usize) -> usize) -> Self {
             let (ptr, tag) = self.decompose();
             Self::compose(ptr, func(tag))
@@ -262,7 +245,6 @@ impl<T, const N: usize> TagPtr<T, N> {
         ///
         /// assert_eq!(ptr.add_tag(1).decompose(), (reference as *mut _, 0b11));
         /// ```
-        #[inline]
         pub fn add_tag(self, value: usize) -> Self {
             Self::from_usize(self.into_usize().wrapping_add(value))
         }
@@ -281,7 +263,6 @@ impl<T, const N: usize> TagPtr<T, N> {
         ///
         /// assert_eq!(ptr.sub_tag(1).decompose(), (reference as *mut _, 0b01));
         /// ```
-        #[inline]
         pub fn sub_tag(self, value: usize) -> Self {
             Self::from_usize(self.into_usize().wrapping_sub(value))
         }
@@ -289,7 +270,6 @@ impl<T, const N: usize> TagPtr<T, N> {
 
     doc_comment! {
         doc_decompose!(),
-        #[inline]
         pub fn decompose(self) -> (*mut T, usize) {
             (self.decompose_ptr(), self.decompose_tag())
         }
@@ -297,7 +277,6 @@ impl<T, const N: usize> TagPtr<T, N> {
 
     doc_comment! {
         doc_decompose_ptr!(),
-        #[inline]
         pub fn decompose_ptr(self) -> *mut T {
             crate::decompose_ptr::<T>(self.inner as usize, Self::TAG_BITS)
         }
@@ -305,7 +284,6 @@ impl<T, const N: usize> TagPtr<T, N> {
 
     doc_comment! {
         doc_decompose_tag!(),
-        #[inline]
         pub fn decompose_tag(self) -> usize {
             crate::decompose_tag::<T>(self.inner as usize, Self::TAG_BITS)
         }
@@ -326,7 +304,6 @@ impl<T, const N: usize> TagPtr<T, N> {
         ///     assert_eq!(ptr.as_ref(), Some(&1));
         /// }
         /// ```
-        #[inline]
         pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
             self.decompose_ptr().as_ref()
         }
@@ -347,7 +324,6 @@ impl<T, const N: usize> TagPtr<T, N> {
         ///     assert_eq!(ptr.as_mut(), Some(&mut 1));
         /// }
         /// ```
-        #[inline]
         pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
             self.decompose_ptr().as_mut()
         }
@@ -372,7 +348,6 @@ impl<T, const N: usize> TagPtr<T, N> {
     ///     assert_eq!(ptr.decompose_ref(), (Some(&1), 0b11));
     /// }
     /// ```
-    #[inline]
     pub unsafe fn decompose_ref<'a>(self) -> (Option<&'a T>, usize) {
         (self.as_ref(), self.decompose_tag())
     }
@@ -396,25 +371,18 @@ impl<T, const N: usize> TagPtr<T, N> {
     ///     assert_eq!(ptr.decompose_mut(), (Some(&mut 1), 0b11));
     /// }
     /// ```
-    #[inline]
     pub unsafe fn decompose_mut<'a>(self) -> (Option<&'a mut T>, usize) {
         (self.as_mut(), self.decompose_tag())
     }
 }
 
-/********** impl Debug ****************************************************************************/
-
 impl<T, const N: usize> fmt::Debug for TagPtr<T, N> {
     impl_debug!("TagPtr");
 }
 
-/********** impl Default **************************************************************************/
-
 impl<T, const N: usize> Default for TagPtr<T, N> {
     impl_default!();
 }
-
-/********** impl From (*mut T) ********************************************************************/
 
 impl<T, const N: usize> From<*mut T> for TagPtr<T, N> {
     #[inline]
@@ -423,16 +391,12 @@ impl<T, const N: usize> From<*mut T> for TagPtr<T, N> {
     }
 }
 
-/********** impl From (*const T) ******************************************************************/
-
 impl<T, const N: usize> From<*const T> for TagPtr<T, N> {
     #[inline]
     fn from(ptr: *const T) -> Self {
         Self::new(ptr as _)
     }
 }
-
-/********** impl From (&T) ************************************************************************/
 
 impl<T, const N: usize> From<&T> for TagPtr<T, N> {
     #[inline]
@@ -441,16 +405,12 @@ impl<T, const N: usize> From<&T> for TagPtr<T, N> {
     }
 }
 
-/********** impl From ((&T, usize)) ***************************************************************/
-
 impl<T, const N: usize> From<(&T, usize)> for TagPtr<T, N> {
     #[inline]
     fn from((reference, tag): (&T, usize)) -> Self {
         Self::compose(reference as *const T as *mut T, tag)
     }
 }
-
-/********** impl From (&mut T) ********************************************************************/
 
 impl<T, const N: usize> From<&mut T> for TagPtr<T, N> {
     #[inline]
@@ -459,16 +419,12 @@ impl<T, const N: usize> From<&mut T> for TagPtr<T, N> {
     }
 }
 
-/********** impl From ((&mut T, usize)) ***********************************************************/
-
 impl<T, const N: usize> From<(&mut T, usize)> for TagPtr<T, N> {
     #[inline]
     fn from((reference, tag): (&mut T, usize)) -> Self {
         Self::compose(reference, tag)
     }
 }
-
-/********** impl From (NonNull) *******************************************************************/
 
 impl<T, const N: usize> From<NonNull<T>> for TagPtr<T, N> {
     #[inline]
@@ -477,8 +433,6 @@ impl<T, const N: usize> From<NonNull<T>> for TagPtr<T, N> {
     }
 }
 
-/********** impl From (TagNonNull) *************************************************************/
-
 impl<T, const N: usize> From<TagNonNull<T, N>> for TagPtr<T, N> {
     #[inline]
     fn from(ptr: TagNonNull<T, N>) -> Self {
@@ -486,35 +440,23 @@ impl<T, const N: usize> From<TagNonNull<T, N>> for TagPtr<T, N> {
     }
 }
 
-/********** impl PartialEq ************************************************************************/
-
 impl<T, const N: usize> PartialEq for TagPtr<T, N> {
     impl_partial_eq!();
 }
-
-/********** impl PartialOrd ***********************************************************************/
 
 impl<T, const N: usize> PartialOrd for TagPtr<T, N> {
     impl_partial_ord!();
 }
 
-/********** impl Pointer **************************************************************************/
-
 impl<T, const N: usize> fmt::Pointer for TagPtr<T, N> {
     impl_pointer!();
 }
 
-/********** impl Eq *******************************************************************************/
-
 impl<T, const N: usize> Eq for TagPtr<T, N> {}
-
-/********** impl Ord ******************************************************************************/
 
 impl<T, const N: usize> Ord for TagPtr<T, N> {
     impl_ord!();
 }
-
-/********** impl Hash *****************************************************************************/
 
 impl<T, const N: usize> Hash for TagPtr<T, N> {
     impl_hash!();

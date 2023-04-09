@@ -1,8 +1,8 @@
 name: tagptr tests
 on:
   push:
-    branches: [master]
-    tags: [v*]
+    branches: [master, develop]
+    tags: [v*.*.*]
   pull_request:
     branches: [master]
 

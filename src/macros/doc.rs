@@ -8,7 +8,7 @@ macro_rules! doc_comment {
     };
 }
 
-/********** macros for generating constants docs **************************************************/
+/********** macros for generating constants docs ******************************/
 
 /// A macro for generating the docs for the `TAG_BITS` constant.
 macro_rules! doc_tag_bits {
@@ -31,7 +31,7 @@ macro_rules! doc_ptr_mask {
     };
 }
 
-/********** macros for generating function docs ***************************************************/
+/********** macros for generating function docs *******************************/
 
 macro_rules! doc_null {
     () => {
