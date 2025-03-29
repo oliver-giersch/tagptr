@@ -1,13 +1,13 @@
 [package]
 name = "tagptr"
 version = "0.2.0"
-authors = ["Oliver Giersch"]
-description = "Strongly typed atomic and non-atomic tagged pointers"
-license = "MIT/Apache-2.0"
-readme = "README.md"
+license = "MIT OR Apache-2.0"
 repository = "https://github.com/oliver-giersch/tagptr.git"
 documentation = "https://docs.rs/tagptr"
+description = "Strongly typed atomic and non-atomic tagged pointers"
 keywords = ["pointer", "tagging", "concurrency"]
 categories = ["no-std"]
+authors = ["Oliver Giersch"]
+readme = "README.md"
 edition = "2018"
 exclude = [".github/"]
