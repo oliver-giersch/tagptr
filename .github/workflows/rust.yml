@@ -8,7 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  FIXED_NIGHTLY: nightly-2021-07-09
+  FIXED_NIGHTLY: nightly-2025-09-05
 
 jobs:
   test:
